@@ -1,6 +1,6 @@
 # Recurring Messages Telebot
 
-Recurring Messages Telebot is a Telegram bot. It's available at https://t.me/scheduler_telebot. :sparkles:
+Recurring Messages Telebot is a Telegram bot. It's available at https://t.me/cron_telebot. :sparkles:
 
 One project, two deployments/entrypoints. [bot.py](./bot.py) runs the Telegram bot, while [app.py](./app.py) runs the Flask application.
 

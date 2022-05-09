@@ -27,7 +27,7 @@ request_text_message = (
 simple_prompt_message = "\/add to create a new job"
 prompt_new_job_message = "The job already got this field\. Please \/add and create a new job\. If you want to override, \/delete job and create again\."
 invalid_new_job_message = "A job with this name already exists\. Please \/add and create a new job\. If you want to override, \/delete job and create again\."
-confirm_message = "Ok\. Done\. Added\. Your message will be sent when the time comes\."
+confirm_message = "Ok. Done. Added. Your message will be sent when the time comes. Check /list to make sure that your job is added correctly."
 invalid_crontab_message = "This expression is invalid. Please provide a valid expression. Click <a href='https://crontab.guru/'>here</a> if you need help."  # html
 list_jobs_message = "Hey, choose the job you are interested to know more about.\n\n(swipe left to reply to this message)"
 delete_success_message = "Yeet! This job is now gone."

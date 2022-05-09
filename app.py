@@ -5,6 +5,7 @@ import logging
 from sheets import SheetsService, edit_entry_multiple_fields, parse_time
 import requests
 from helper import calc_next_run
+import gc
 
 app = Flask(__name__)
 
@@ -19,12 +20,15 @@ logger = logging.getLogger(__name__)
 def run():
     # TODO - allow only POST
     # TODO - add authentication
-    now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
     sheets_service = SheetsService()
-    entries = retrieve_entries_from_db(sheets_service, now)
+    now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
+    parsed_time = parse_time(now)
+    entries = sheets_service.get_entries_by_nextrun(parsed_time)
 
     if len(entries) < 1:
         logger.info("No messages sent")
+        gc.collect()
+
         return Response(status=200)
 
     for i, row in entries:
@@ -43,12 +47,9 @@ def run():
         )
         sheets_service.update_entry(updated_entry)
 
+    gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
+
     return Response(status=200)
-
-
-def retrieve_entries_from_db(sheets_service, nextrun_ts):
-    parsed_time = parse_time(nextrun_ts)
-    return sheets_service.get_entries_by_nextrun(parsed_time)
 
 
 def send_message(chat_id, content):

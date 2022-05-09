@@ -282,7 +282,7 @@ def add_message(update):
     )
 
     # reply
-    update.message.reply_text(config.confirm_message, parse_mode="MarkdownV2")
+    update.message.reply_text(config.confirm_message)
 
 
 def remove_job(update):

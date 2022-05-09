@@ -52,6 +52,13 @@ class SheetsService:
             row=1, values=[now, now, username, str(chat_id), jobname], inherit=True
         )
 
+        logger.info(
+            'New job entry "%s" added by user "%s", chat_id=%s',
+            jobname,
+            username,
+            str(chat_id),
+        )
+
     def retrieve_latest_entry(self, chat_id):
         df = self.main_worksheet.get_as_df()
         df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
@@ -70,6 +77,13 @@ class SheetsService:
         entry = entry.drop(columns="gsheet_row_number")
         entry["chat_id"] = entry["chat_id"].astype(str)
         self.main_worksheet.update_row(row_number, entry.iloc[0].tolist())
+
+        logger.info(
+            'Job entry "%s" updated by user "%s", chat_id=%s',
+            get_value(entry, "jobname"),
+            get_value(entry, "last_updated_by"),
+            str(get_value(entry, "chat_id")),
+        )
 
     def retrieve_specific_entry(self, chat_id, jobname, include_removed=False):
         df = self.main_worksheet.get_as_df()
@@ -147,12 +161,26 @@ class SheetsService:
             ],
             inherit=True,
         )
+
+        logger.info(
+            'New chat entry created by user "%s", chat_id=%s, chat_title=%s',
+            created_by_username,
+            str(chat_id),
+            chat_title,
+        )
+
         return
 
     def add_user(self, user_id, username, first_name):
         now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         self.user_data_worksheet.insert_rows(
             row=1, values=[str(user_id), username, first_name, now, now], inherit=True
+        )
+
+        logger.info(
+            'New user created, user_id=%s, username="%s"',
+            str(user_id),
+            username,
         )
 
     def retrieve_user_data(self, user_id):
@@ -181,6 +209,12 @@ class SheetsService:
 
         self.user_data_worksheet.update_row(row_number, entry.iloc[0].tolist())
 
+        logger.info(
+            'User superseded, user_id=%s, field_changed="%s"',
+            get_value(entry, "user_id"),
+            field_changed,
+        )
+
     def refresh_user(self, entry):
         now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         entry = edit_entry_single_field(entry, "last_used_at", now)
@@ -203,12 +237,6 @@ class SheetsService:
                 update.message.from_user.first_name,
             )
 
-            logger.info(
-                "New user added, username=%s, user_id=%s",
-                update.message.from_user.username,
-                update.message.from_user.id,
-            )
-
             return
 
         # check that username hasn't changed
@@ -222,7 +250,7 @@ class SheetsService:
             self.sync_user_data(update)
 
             logger.info(
-                "username updated, new username=%s, user_id=%s",
+                "User's username updated, new username=%s, user_id=%s",
                 update.message.from_user.username,
                 update.message.from_user.id,
             )
@@ -238,7 +266,7 @@ class SheetsService:
             )
 
             logger.info(
-                "first_name updated, new first_name=%s, username=%s, user_id=%s",
+                "User's first_name updated, new first_name=%s, username=%s, user_id=%s",
                 update.message.from_user.first_name,
                 update.message.from_user.username,
                 update.message.from_user.id,
