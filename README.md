@@ -2,7 +2,7 @@
 
 Recurring Messages Telebot is a Telegram bot. It's available at https://t.me/scheduler_telebot. :sparkles:
 
-One project, two deployments/entrypoints. [bot.py](./bot.py) runs the Telegram bot, while [app.py] runs the Flask application.
+One project, two deployments/entrypoints. [bot.py](./bot.py) runs the Telegram bot, while [app.py](./app.py) runs the Flask application.
 
 ## Noteworthy files
 1. [app.py](./app.py) — flask app, ping the endpoint to trigger check and send all required messages
@@ -26,7 +26,7 @@ Check out [config.py](./config.py) to find out what environment variables are re
 ```
 virtualenv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-all.txt
 ```
 
 ### 3. Start services

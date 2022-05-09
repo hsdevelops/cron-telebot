@@ -3,6 +3,7 @@ from croniter import croniter
 from sheets import parse_time
 import config
 
+
 def calc_next_run(crontab, user_tz_offset):
     user_tz = timezone(timedelta(hours=user_tz_offset))
     user_now = datetime.now(user_tz)
