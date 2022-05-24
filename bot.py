@@ -12,7 +12,7 @@ from sheets import (
     get_value,
     parse_time,
 )
-from croniter import croniter
+from cron_descriptor import get_description
 
 from datetime import datetime, timezone, timedelta
 from helper import calc_next_run
@@ -47,6 +47,13 @@ def help(update, context):
     """Send a message when the command /help is issued."""
     update.message.reply_text(
         config.help_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+    )
+
+
+def checkcron(update, context):
+    """Send a message when the command /checkcron is issued."""
+    update.message.reply_text(
+        config.checkcron_message, reply_markup=ForceReply(selective=True)
     )
 
 
@@ -95,7 +102,7 @@ def delete(update, context):
     update.message.reply_text(config.delete_message, reply_markup=reply_markup)
 
 
-def listjobs(update, context):
+def list_jobs(update, context):
     """Send a message when the command /list is issued."""
     sheets_service = SheetsService(update)
     entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
@@ -111,6 +118,39 @@ def listjobs(update, context):
     update.message.reply_text(config.list_jobs_message, reply_markup=reply_markup)
 
 
+def list_options(update, context):
+    """Send a message when the command /options is issued."""
+    sheets_service = SheetsService(update)
+    entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
+
+    if len(entries) <= 0:  # there must be at least one job available
+        update.message.reply_text(config.simple_prompt_message, parse_mode="MarkdownV2")
+        return
+
+    update.message.reply_text(
+        config.list_options_message,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
+    )
+
+
+def option_delete_previous(update, context):
+    sheets_service = SheetsService(update)
+    entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
+
+    if len(entries) <= 0:  # there must be at least one job available
+        update.message.reply_text(config.simple_prompt_message, parse_mode="MarkdownV2")
+        return
+
+    keyboard = prepare_keyboard(entries)
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard, one_time_keyboard=True, resize_keyboard=True
+    )
+    update.message.reply_text(
+        config.option_delete_previous_message, reply_markup=reply_markup
+    )
+
+
 def show_job_details(update):
     sheets_service = SheetsService(update)
 
@@ -121,13 +161,18 @@ def show_job_details(update):
     if entry_df is None:
         update.message.reply_text(config.error_message)
 
-    reply_text = "Job name: {}\nCron: {}\nContent: {}\n\nNext run: {}".format(
+    reply_text = "<b>Job name</b>: {}\n<b>Cron</b>: {}\n<b>Content</b>: {}\n<b>Next run</b>: {}\n\n<b>Advanced options</b>\n/deleteprevious: {}".format(
         get_value(entry_df, "jobname"),
         get_value(entry_df, "crontab"),
         get_value(entry_df, "content"),
         get_value(entry_df, "user_nextrun_ts"),
+        "enabled"
+        if get_value(entry_df, "option_delete_previous") != ""
+        else "disabled",
     )
-    update.message.reply_text(reply_text, reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(
+        reply_text, parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardRemove()
+    )
 
 
 def add_new_job(update):
@@ -151,11 +196,11 @@ def add_new_job(update):
 
     # add job to db
     sheets_service.add_new_entry(
-        update.message.chat.id, update.message.text, update.message.from_user.username
+        update.message.chat.id, update.message.text, update.message.from_user.id
     )
     update.message.reply_text(
         reply_markup=ForceReply(selective=True),
-        text=config.request_crontab_message,
+        text=config.request_text_message,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
@@ -163,7 +208,7 @@ def add_new_job(update):
     logger.info(
         'New job "%s" added by user "%s" in room "%s", chat_id=%s',
         update.message.text,
-        update.message.from_user.username,
+        update.message.from_user.id,
         update.message.chat.title,
         update.message.chat.id,
     )
@@ -187,7 +232,7 @@ def add_timezone(update):
         chat_title=update.message.chat.title,
         chat_type=update.message.chat.type,
         tz_offset=tz_offset,
-        created_by_username=update.message.from_user.username,
+        created_by=update.message.from_user.id,
         telegram_ts=update.message.date,
     )
     update.message.reply_text(
@@ -195,8 +240,51 @@ def add_timezone(update):
     )
 
 
+def add_message(update):
+    sheets_service = SheetsService(update)
+    entry_df = sheets_service.retrieve_latest_entry(update.message.chat.id)
+
+    if entry_df is None:
+        update.message.reply_text(config.simple_prompt_message, parse_mode="MarkdownV2")
+        return
+
+    if len(get_value(entry_df, "content")) > 0:  # field must be empty
+        update.message.reply_text(
+            config.prompt_new_job_message, parse_mode="MarkdownV2"
+        )
+        return
+
+    # update sheets entry
+    updated_entry_df = edit_entry_multiple_fields(
+        entry_df,
+        {
+            "content": update.message.text,
+            "last_updated_by": str(update.message.from_user.id),
+        },
+    )
+    sheets_service.update_entry(updated_entry_df)
+
+    logger.info(
+        'User "%s" updated message content for job "%s" in room "%s", chat_id=%s',
+        update.message.from_user.id,
+        get_value(entry_df, "jobname"),
+        update.message.chat.title,
+        update.message.chat.id,
+    )
+
+    # reply
+    update.message.reply_text(
+        reply_markup=ForceReply(selective=True),
+        text=config.request_crontab_message,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
+    )
+
+
 def add_crontab(update):
-    if not croniter.is_valid(update.message.text):  # crontab is not valid
+    try:
+        description = get_description(update.message.text).lower()
+    except Exception:  # crontab is not valid
         update.message.reply_text(
             reply_markup=ForceReply(selective=True),
             text=config.invalid_crontab_message,
@@ -218,46 +306,8 @@ def add_crontab(update):
         )
         return
 
-    # update sheets entry
-    updated_entry_df = edit_entry_multiple_fields(
-        entry_df,
-        {
-            "crontab": update.message.text,
-            "last_updated_by": update.message.from_user.username,
-        },
-    )
-    sheets_service.update_entry(updated_entry_df)
-
-    logger.info(
-        'User "%s" updated crontab for job "%s" in room "%s", chat_id=%s',
-        update.message.from_user.username,
-        get_value(entry_df, "jobname"),
-        update.message.chat.title,
-        update.message.chat.id,
-    )
-
-    # reply
-    update.message.reply_text(
-        reply_markup=ForceReply(selective=True), text=config.request_text_message
-    )
-
-
-def add_message(update):
-    sheets_service = SheetsService(update)
-    entry_df = sheets_service.retrieve_latest_entry(update.message.chat.id)
-
-    if entry_df is None:
-        update.message.reply_text(config.simple_prompt_message, parse_mode="MarkdownV2")
-        return
-
-    if len(get_value(entry_df, "content")) > 0:  # field must be empty
-        update.message.reply_text(
-            config.prompt_new_job_message, parse_mode="MarkdownV2"
-        )
-        return
-
     # arrange next run date and time
-    crontab = get_value(entry_df, "crontab")
+    crontab = update.message.text
     user_tz_offset = sheets_service.retrieve_tz(update.message.chat.id)
     user_nextrun_ts, db_nextrun_ts = calc_next_run(crontab, user_tz_offset)
 
@@ -265,24 +315,31 @@ def add_message(update):
     updated_entry_df = edit_entry_multiple_fields(
         entry_df,
         {
-            "content": update.message.text,
+            "crontab": update.message.text,
             "nextrun_ts": db_nextrun_ts,
             "user_nextrun_ts": user_nextrun_ts,
-            "last_updated_by": update.message.from_user.username,
+            "last_updated_by": str(update.message.from_user.id),
         },
     )
     sheets_service.update_entry(updated_entry_df)
 
     logger.info(
-        'User "%s" updated message content for job "%s" in room "%s", chat_id=%s',
-        update.message.from_user.username,
+        'User "%s" updated crontab for job "%s" in room "%s", chat_id=%s',
+        update.message.from_user.id,
         get_value(entry_df, "jobname"),
         update.message.chat.title,
         update.message.chat.id,
     )
 
     # reply
-    update.message.reply_text(config.confirm_message)
+    update.message.reply_text(
+        '{} Your message "{}" will be sent {}. {}'.format(
+            config.confirm_message_prepend,
+            get_value(entry_df, "content"),
+            description,
+            config.confirm_message_append,
+        )
+    )
 
 
 def remove_job(update):
@@ -300,7 +357,7 @@ def remove_job(update):
         entry_df,
         {
             "removed_ts": parse_time(now),
-            "last_updated_by": update.message.from_user.username,
+            "last_updated_by": str(update.message.from_user.id),
         },
     )
     sheets_service.update_entry(updated_entry_df)
@@ -308,7 +365,7 @@ def remove_job(update):
     logger.info(
         'Job "%s" removed by user "%s" in room "%s", chat_id=%s',
         get_value(entry_df, "jobname"),
-        update.message.from_user.username,
+        update.message.from_user.id,
         update.message.chat.title,
         update.message.chat.id,
     )
@@ -318,8 +375,68 @@ def remove_job(update):
     )
 
 
+def decrypt_cron(update):
+    try:
+        description = get_description(update.message.text).lower()
+    except Exception:  # crontab is not valid
+        update.message.reply_text(
+            text=config.checkcron_invalid_message,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
+        return
+
+    update.message.reply_text(config.checkcron_meaning_message + description)
+
+
+def toggle_option(update, option):
+    sheets_service = SheetsService(update)
+    entry_df = sheets_service.retrieve_specific_entry(
+        update.message.chat.id, update.message.text
+    )
+
+    if entry_df is None:
+        update.message.reply_text(config.error_message)
+        return
+
+    key_lookup = {  # telegram_command: gsheet_key
+        "deleteprevious": "option_delete_previous"
+    }
+
+    previous_option_value = get_value(entry_df, key_lookup[option]) != ""
+    new_option_value = "" if previous_option_value else True
+
+    # update sheets entry
+    updated_entry_df = edit_entry_multiple_fields(
+        entry_df,
+        {
+            key_lookup[option]: new_option_value,
+            "last_updated_by": str(update.message.from_user.id),
+        },
+    )
+    sheets_service.update_entry(updated_entry_df)
+
+    logger.info(
+        'User "%s" updated option "%s" to "%s" for job "%s" in room "%s", chat_id=%s',
+        update.message.from_user.id,
+        key_lookup[option],
+        new_option_value,
+        get_value(entry_df, "jobname"),
+        update.message.chat.title,
+        update.message.chat.id,
+    )
+
+    update.message.reply_text(
+        "The /{} option is now {} for {}. Cheers!".format(
+            option,
+            "enabled" if new_option_value != "" else "disabled",
+            update.message.text,
+        ),
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
 def handle_messages(update, context):
-    """Echo the user message."""
     reply_to_message = update.message.reply_to_message
     if reply_to_message is None:
         return
@@ -334,6 +451,10 @@ def handle_messages(update, context):
         add_timezone(update)
     if text == config.list_jobs_message:
         show_job_details(update)
+    if text == config.checkcron_message:
+        decrypt_cron(update)
+    if text == config.option_delete_previous_message:
+        toggle_option(update, "deleteprevious")
     if text == re.sub(
         re.compile("<.*?>"), "", config.request_crontab_message
     ) or text == re.sub(re.compile("<.*?>"), "", config.invalid_crontab_message):
@@ -364,7 +485,10 @@ def start_bot():
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("add", add))
     dp.add_handler(CommandHandler("delete", delete))
-    dp.add_handler(CommandHandler("list", listjobs))
+    dp.add_handler(CommandHandler("list", list_jobs))
+    dp.add_handler(CommandHandler("checkcron", checkcron))
+    dp.add_handler(CommandHandler("options", list_options))
+    dp.add_handler(CommandHandler("deleteprevious", option_delete_previous))
 
     # on noncommand i.e message
     dp.add_handler(MessageHandler(Filters.text, handle_messages))

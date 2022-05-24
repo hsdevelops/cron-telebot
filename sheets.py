@@ -46,16 +46,16 @@ class SheetsService:
         if update is not None:
             self.sync_user_data(update)
 
-    def add_new_entry(self, chat_id, jobname, username):
+    def add_new_entry(self, chat_id, jobname, userid):
         now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         self.main_worksheet.insert_rows(
-            row=1, values=[now, now, username, str(chat_id), jobname], inherit=True
+            row=1, values=[now, now, userid, str(chat_id), jobname], inherit=True
         )
 
         logger.info(
             'New job entry "%s" added by user "%s", chat_id=%s',
             jobname,
-            username,
+            userid,
             str(chat_id),
         )
 
@@ -75,8 +75,7 @@ class SheetsService:
         entry = edit_entry_single_field(entry, "last_update_ts", now)
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
-        entry["chat_id"] = entry["chat_id"].astype(str)
-        self.main_worksheet.update_row(row_number, entry.iloc[0].tolist())
+        self.main_worksheet.update_row(row_number, entry.astype(str).iloc[0].tolist())
 
         logger.info(
             'Job entry "%s" updated by user "%s", chat_id=%s',
@@ -144,7 +143,7 @@ class SheetsService:
         chat_title,
         chat_type,
         tz_offset,
-        created_by_username,
+        created_by,
         telegram_ts,
     ):
         now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
@@ -155,7 +154,7 @@ class SheetsService:
                 chat_title,
                 chat_type,
                 tz_offset,
-                created_by_username,
+                created_by,
                 parse_time(telegram_ts),
                 now,
             ],
@@ -164,7 +163,7 @@ class SheetsService:
 
         logger.info(
             'New chat entry created by user "%s", chat_id=%s, chat_title=%s',
-            created_by_username,
+            created_by,
             str(chat_id),
             chat_title,
         )
@@ -240,7 +239,10 @@ class SheetsService:
             return
 
         # check that username hasn't changed
-        if update.message.from_user.username != get_value(user, "username"):
+        previous_username = (
+            None if get_value(user, "username") == "" else get_value(user, "username")
+        )  # username could be None
+        if update.message.from_user.username != previous_username:
             self.supersede_user(user, "username")
             self.add_user(
                 update.message.from_user.id,
