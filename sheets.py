@@ -47,9 +47,11 @@ class SheetsService:
             self.sync_user_data(update)
 
     def add_new_entry(self, chat_id, jobname, userid):
-        now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         self.main_worksheet.insert_rows(
-            row=1, values=[now, now, userid, str(chat_id), jobname], inherit=True
+            row=1,
+            values=[now, now, userid, userid, str(chat_id), jobname],
+            inherit=True,
         )
 
         logger.info(
@@ -61,6 +63,7 @@ class SheetsService:
 
     def retrieve_latest_entry(self, chat_id):
         df = self.main_worksheet.get_as_df()
+        df["jobname"] = df["jobname"].astype("str")
         df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
         filtered_df = df[(df["chat_id"] == chat_id) & (df["removed_ts"] == "")]
         result = filtered_df[
@@ -71,7 +74,7 @@ class SheetsService:
         return result
 
     def update_entry(self, entry):
-        now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         entry = edit_entry_single_field(entry, "last_update_ts", now)
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
@@ -86,6 +89,7 @@ class SheetsService:
 
     def retrieve_specific_entry(self, chat_id, jobname, include_removed=False):
         df = self.main_worksheet.get_as_df()
+        df["jobname"] = df["jobname"].astype("str")
         df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
         running_filter = df["removed_ts"] == ""
         if include_removed:
@@ -99,6 +103,7 @@ class SheetsService:
 
     def check_exists(self, chat_id, jobname):
         df = self.main_worksheet.get_as_df()
+        df["jobname"] = df["jobname"].astype("str")
         if (
             len(
                 df[
@@ -114,6 +119,7 @@ class SheetsService:
 
     def get_entries_by_nextrun(self, ts):
         df = self.main_worksheet.get_as_df()
+        df["jobname"] = df["jobname"].astype("str")
         df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
         filtered_df = df[
             (df["nextrun_ts"] <= ts) & (df["removed_ts"] == "") & (df["crontab"] != "")
@@ -122,6 +128,7 @@ class SheetsService:
 
     def get_entries_by_chatid(self, chat_id):
         df = self.main_worksheet.get_as_df()
+        df["jobname"] = df["jobname"].astype("str")
         df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
         filtered_df = (
             df[(df["chat_id"] == chat_id) & (df["removed_ts"] == "")]
@@ -129,6 +136,12 @@ class SheetsService:
             .iterrows()
         )
         return list(filtered_df)
+
+    def count_entries_by_userid(self, user_id):
+        df = self.main_worksheet.get_as_df()
+        df["jobname"] = df["jobname"].astype("str")
+        filtered_df = df[(df["created_by"] == user_id) & (df["removed_ts"] == "")]
+        return len(filtered_df)
 
     def retrieve_tz(self, chat_id):
         df = self.chat_data_worksheet.get_as_df()
@@ -146,7 +159,7 @@ class SheetsService:
         created_by,
         telegram_ts,
     ):
-        now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         self.chat_data_worksheet.insert_rows(
             row=1,
             values=[
@@ -155,7 +168,7 @@ class SheetsService:
                 chat_type,
                 tz_offset,
                 created_by,
-                parse_time(telegram_ts),
+                parse_time_millis(telegram_ts),
                 now,
             ],
             inherit=True,
@@ -171,7 +184,7 @@ class SheetsService:
         return
 
     def add_user(self, user_id, username, first_name):
-        now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         self.user_data_worksheet.insert_rows(
             row=1, values=[str(user_id), username, first_name, now, now], inherit=True
         )
@@ -192,7 +205,7 @@ class SheetsService:
 
     def supersede_user(self, entry, field_changed):
         # update previous entry
-        now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         entry = edit_entry_multiple_fields(
             entry,
             {
@@ -215,7 +228,7 @@ class SheetsService:
         )
 
     def refresh_user(self, entry):
-        now = parse_time(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
         entry = edit_entry_single_field(entry, "last_used_at", now)
 
         row_number = entry["gsheet_row_number"]
@@ -294,6 +307,8 @@ def edit_entry_multiple_fields(entry, key_value_pairs):
 def get_value(entry, key):
     return entry.iloc[0][key]
 
-
-def parse_time(datetime_obj):
+def parse_time_mins(datetime_obj):
     return datetime_obj.strftime("%Y-%m-%d %H:%M")
+
+def parse_time_millis(datetime_obj):
+    return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")

@@ -10,7 +10,7 @@ from sheets import (
     SheetsService,
     edit_entry_multiple_fields,
     get_value,
-    parse_time,
+    parse_time_millis,
 )
 from cron_descriptor import get_description
 
@@ -68,6 +68,11 @@ def add(update, context):
             text=config.start_message,
             parse_mode="MarkdownV2",
         )
+        return
+
+    # person limit
+    if sheets_service.count_entries_by_userid(update.message.from_user.id) >= config.JOB_LIMIT_PER_PERSON:
+        update.message.reply_text(text=config.exceed_limit_error_message)
         return
 
     update.message.reply_text(
@@ -186,6 +191,11 @@ def add_new_job(update):
             parse_mode="MarkdownV2",
         )
         return
+    
+    # person limit
+    if sheets_service.count_entries_by_userid(update.message.from_user.id) >= config.JOB_LIMIT_PER_PERSON:
+        update.message.reply_text(text=config.exceed_limit_error_message)
+        return
 
     # check name does not already exist
     if sheets_service.check_exists(update.message.chat.id, update.message.text):
@@ -262,6 +272,7 @@ def add_message(update):
             "last_updated_by": str(update.message.from_user.id),
         },
     )
+
     sheets_service.update_entry(updated_entry_df)
 
     logger.info(
@@ -352,11 +363,12 @@ def remove_job(update):
 
     if entry_df is None:
         update.message.reply_text(config.error_message)
+        return
 
     updated_entry_df = edit_entry_multiple_fields(
         entry_df,
         {
-            "removed_ts": parse_time(now),
+            "removed_ts": parse_time_millis(now),
             "last_updated_by": str(update.message.from_user.id),
         },
     )
@@ -437,6 +449,8 @@ def toggle_option(update, option):
 
 
 def handle_messages(update, context):
+    if update.message is None:
+        return
     reply_to_message = update.message.reply_to_message
     if reply_to_message is None:
         return

@@ -2,7 +2,7 @@ from flask import Flask, Response
 from config import TELEGARM_BOT_TOKEN, TZ_OFFSET
 from datetime import datetime, timedelta, timezone
 import logging
-from sheets import SheetsService, edit_entry_multiple_fields, parse_time
+from sheets import SheetsService, edit_entry_multiple_fields, parse_time_mins
 import requests
 from helper import calc_next_run
 import gc
@@ -22,7 +22,7 @@ def run():
     # TODO - add authentication
     sheets_service = SheetsService()
     now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
-    parsed_time = parse_time(now)
+    parsed_time = parse_time_mins(now)
     entries = sheets_service.get_entries_by_nextrun(parsed_time)
 
     if len(entries) < 1:

@@ -6,6 +6,7 @@ load_dotenv()
 """ General config """
 ENV = getenv("ENV")  # set this only in prod environment
 TZ_OFFSET = 8.0  # (UTC+08:00)
+JOB_LIMIT_PER_PERSON = 10
 
 """ Telegram config """
 
@@ -30,14 +31,15 @@ invalid_new_job_message = "A job with this name already exists\. Please \/add an
 confirm_message_prepend = "Ok. Done. Added."
 confirm_message_append = "To set advanced options, please use /options."
 invalid_crontab_message = "This expression is invalid. Please provide a valid expression. Click <a href='https://crontab.guru/'>here</a> if you need help. Use /checkcron to check your cron expression."  # html
-list_jobs_message = "Hey, choose the job you are interested to know more about.\n\n(swipe left to reply to this message)"
+list_jobs_message = "Hey, choose the job you are interested to know more about. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
 delete_success_message = "Yeet! This job is now gone."
 error_message = "You know that's not right..."
 checkcron_message = "Hey, send me your cron expression, I'll decrypt it for you.\n\n(swipe left to reply to this message)"
 checkcron_invalid_message = "Alright, that's not a valid cron. Click <a href='https://crontab.guru/'>here</a> if you need help."
 checkcron_meaning_message = "Ok, that means: "
-list_options_message = "Currently I only have one advanced option available LOL.\n\n/deleteprevious - Delete the previous message when the next message is sent. Ensures that only one message per job is in the chat at a time. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please open an issue <a href='https://github.com/huishun98/recurring-messages-telebot/issues'>here</a>."  # html
-option_delete_previous_message = "Tell me the name of the job you want to toggle the /deleteprevious option for.\n\n(swipe left to reply to this message)"
+list_options_message = "Currently I only have one advanced option available LOL.\n\n/deleteprevious - Delete the previous message when the next message is sent. Ensures that only one message per job is in the chat at a time. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com."  # html
+option_delete_previous_message = "Tell me the name of the job you want to toggle the /deleteprevious option for. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
+exceed_limit_error_message = "Recurring Messages currently only supports 10 jobs per person, in an effort to reduce spam.\n\nIf you need to create more than 10 jobs, please contact the bot owner at hs.develops.1@gmail.com."
 
 """ GSheets config """
 # Create the Google Sheet manually. Set all values as plain text format.
