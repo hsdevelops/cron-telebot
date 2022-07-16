@@ -226,11 +226,17 @@ def add_new_job(update):
 
 def add_timezone(update):
     # check validity
-    try:
-        tz_offset = int(update.message.text)
-    except ValueError:
+    tz_values = re.match("^(([+-])(2[0-3]|[01][0-9]):([0-5][0-9]))$", update.message.text)
+    if not tz_values:
         update.message.reply_text(config.error_message)
         return
+    match_groups = tz_values.groups()
+    utc_tz = "'%s" % match_groups[0]
+    sign = match_groups[1]
+    hour = int(match_groups[2])
+    mins = int(match_groups[3])
+
+    tz_offset = float("%s%.2f" % (sign, hour + mins/60))
 
     if tz_offset < -12 or tz_offset > 14:
         update.message.reply_text(config.error_message)
@@ -242,6 +248,7 @@ def add_timezone(update):
         chat_title=update.message.chat.title,
         chat_type=update.message.chat.type,
         tz_offset=tz_offset,
+        utc_tz=utc_tz,
         created_by=update.message.from_user.id,
         telegram_ts=update.message.date,
     )

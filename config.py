@@ -15,7 +15,7 @@ TELEGARM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
 BOTHOST = getenv("BOTHOST")  # only required in prod environment
 
 # custom messages
-start_message = "*Thank you for using Recurring Messages\!*\n\nTo start, please tell me your UTC timezone\. For example, if your timezone is UTC\-8, enter \-8\.\n\n\(swipe left to reply to this message\)"
+start_message = "*Thank you for using Recurring Messages\!*\n\nTo start, please tell me your UTC timezone\. For example, if your timezone is UTC\+08:30, enter \+08:30\.\n\n\(swipe left to reply to this message\)"
 help_message = "I can help you schedule recurring messages using <a href='https://crontab.guru/'>cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/list - list running jobs\n/delete - delete a job\n/options - view advanced job options\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Found a bug?</b>\nPlease contact the bot owner at hs.develops.1@gmail.com."  # html
 delete_message = "Hey, tell me the name of the job you want to delete. Get /list of available jobs.\n\n(swipe left to reply to this message)"
 request_jobname_message = (

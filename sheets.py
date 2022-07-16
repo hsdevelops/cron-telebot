@@ -148,7 +148,7 @@ class SheetsService:
         result = df[df["chat_id"] == chat_id]
         if len(result) < 1:
             return None
-        return int(get_value(result, "tz_offset"))
+        return float(get_value(result, "tz_offset"))
 
     def add_chat_data(
         self,
@@ -156,6 +156,7 @@ class SheetsService:
         chat_title,
         chat_type,
         tz_offset,
+        utc_tz,
         created_by,
         telegram_ts,
     ):
@@ -167,6 +168,7 @@ class SheetsService:
                 chat_title,
                 chat_type,
                 tz_offset,
+                utc_tz,
                 created_by,
                 parse_time_millis(telegram_ts),
                 now,
@@ -272,7 +274,7 @@ class SheetsService:
             return
 
         # check that firstname hasn't changed
-        if update.message.from_user.first_name != get_value(user, "first_name"):
+        if update.message.from_user.first_name != str(get_value(user, "first_name")):
             self.supersede_user(user, "first_name")
             self.add_user(
                 update.message.from_user.id,
