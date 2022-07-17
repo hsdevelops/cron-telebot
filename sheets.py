@@ -42,12 +42,17 @@ class SheetsService:
         self.main_worksheet = gsheet.worksheet_by_title(config.JOB_DATA_SHEETNAME)
         self.chat_data_worksheet = gsheet.worksheet_by_title(config.CHAT_DATA_SHEETNAME)
         self.user_data_worksheet = gsheet.worksheet_by_title(config.USER_DATA_SHEETNAME)
+        self.user_whitelist_worksheet = gsheet.worksheet_by_title(
+            config.USER_WHITELIST_SHEETNAME
+        )
 
         if update is not None:
             self.sync_user_data(update)
 
     def add_new_entry(self, chat_id, jobname, userid):
-        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
         self.main_worksheet.insert_rows(
             row=1,
             values=[now, now, userid, userid, str(chat_id), jobname],
@@ -74,7 +79,9 @@ class SheetsService:
         return result
 
     def update_entry(self, entry):
-        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
         entry = edit_entry_single_field(entry, "last_update_ts", now)
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
@@ -104,7 +111,8 @@ class SheetsService:
     def check_exists(self, chat_id, jobname):
         df = self.main_worksheet.get_as_df()
         df["jobname"] = df["jobname"].astype("str")
-        if (
+
+        return (
             len(
                 df[
                     (df["chat_id"] == chat_id)
@@ -113,9 +121,7 @@ class SheetsService:
                 ]
             )
             > 0
-        ):
-            return True
-        return False
+        )
 
     def get_entries_by_nextrun(self, ts):
         df = self.main_worksheet.get_as_df()
@@ -160,7 +166,9 @@ class SheetsService:
         created_by,
         telegram_ts,
     ):
-        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
         self.chat_data_worksheet.insert_rows(
             row=1,
             values=[
@@ -186,7 +194,9 @@ class SheetsService:
         return
 
     def add_user(self, user_id, username, first_name):
-        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
         self.user_data_worksheet.insert_rows(
             row=1, values=[str(user_id), username, first_name, now, now], inherit=True
         )
@@ -207,7 +217,9 @@ class SheetsService:
 
     def supersede_user(self, entry, field_changed):
         # update previous entry
-        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
         entry = edit_entry_multiple_fields(
             entry,
             {
@@ -230,7 +242,9 @@ class SheetsService:
         )
 
     def refresh_user(self, entry):
-        now = parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
         entry = edit_entry_single_field(entry, "last_used_at", now)
 
         row_number = entry["gsheet_row_number"]
@@ -292,6 +306,21 @@ class SheetsService:
 
         self.refresh_user(user)
 
+    def exceed_user_limit(self, user_id):
+        current_job_count = self.count_entries_by_userid(user_id)
+
+        if current_job_count < config.JOB_LIMIT_PER_PERSON:
+            return False
+
+        df = self.user_whitelist_worksheet.get_as_df()
+        result = df[(df["user_id"] == user_id) & (df["removed_ts"] == "")]
+
+        if len(result) < 1:
+            return True
+
+        new_limit = get_value(result, "new_limit")
+        return current_job_count >= new_limit
+
 
 def edit_entry_single_field(entry, key, value):
     entry = entry.reset_index(drop=True)
@@ -309,8 +338,10 @@ def edit_entry_multiple_fields(entry, key_value_pairs):
 def get_value(entry, key):
     return entry.iloc[0][key]
 
+
 def parse_time_mins(datetime_obj):
     return datetime_obj.strftime("%Y-%m-%d %H:%M")
+
 
 def parse_time_millis(datetime_obj):
     return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")

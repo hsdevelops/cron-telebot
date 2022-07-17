@@ -39,7 +39,10 @@ checkcron_invalid_message = "Alright, that's not a valid cron. Click <a href='ht
 checkcron_meaning_message = "Ok, that means: "
 list_options_message = "Currently I only have one advanced option available LOL.\n\n/deleteprevious - Delete the previous message when the next message is sent. Ensures that only one message per job is in the chat at a time. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com."  # html
 option_delete_previous_message = "Tell me the name of the job you want to toggle the /deleteprevious option for. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
-exceed_limit_error_message = "Recurring Messages currently only supports 10 jobs per person, in an effort to reduce spam.\n\nIf you need to create more than 10 jobs, please contact the bot owner at hs.develops.1@gmail.com."
+exceed_limit_error_message = (
+    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\nIf you need to create more than %d jobs, please contact the bot owner at hs.develops.1@gmail.com."
+    % (JOB_LIMIT_PER_PERSON, JOB_LIMIT_PER_PERSON)
+)
 
 """ GSheets config """
 # Create the Google Sheet manually. Set all values as plain text format.
@@ -58,6 +61,9 @@ CHAT_DATA_SHEETNAME = (
 )
 USER_DATA_SHEETNAME = (
     "user data"  # depends on what you name your sheet, defaults to Sheet3.
+)
+USER_WHITELIST_SHEETNAME = (
+    "whitelist"  # depends on what you name your sheet, defaults to Sheet4.
 )
 
 

@@ -65,8 +65,10 @@ def run():
 
 def send_message(chat_id, content):
     # TODO - if feature request: photo
-    telebot_api_endpoint = "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(
-        TELEGARM_BOT_TOKEN, chat_id, content
+    telebot_api_endpoint = (
+        "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(
+            TELEGARM_BOT_TOKEN, chat_id, content
+        )
     )
     response = requests.get(telebot_api_endpoint)
     logger.info(
@@ -76,7 +78,9 @@ def send_message(chat_id, content):
         response.status_code,
     )
     if response.status_code != 200:
-        return "", "Error {}: {}".format(response.status_code, response.json()["description"])
+        return "", "Error {}: {}".format(
+            response.status_code, response.json()["description"]
+        )
     return response.json()["result"]["message_id"], None
 
 
