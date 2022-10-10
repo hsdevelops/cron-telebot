@@ -11,12 +11,12 @@ JOB_LIMIT_PER_PERSON = 10
 """ Telegram config """
 
 # configuration
-TELEGARM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
 BOTHOST = getenv("BOTHOST")  # only required in prod environment
 
 # custom messages
 start_message = "*Thank you for using Recurring Messages\!*\n\nTo start, please tell me your UTC timezone\. For example, if your timezone is UTC\+08:30, enter \+08:30\.\n\n\(swipe left to reply to this message\)"
-help_message = "I can help you schedule recurring messages using <a href='https://crontab.guru/'>cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/list - list running jobs\n/delete - delete a job\n/options - view advanced job options\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Found a bug?</b>\nPlease contact the bot owner at hs.develops.1@gmail.com."  # html
+help_message = "I can help you schedule recurring messages using <a href='https://crontab.guru/'>cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/list - list running jobs\n/delete - delete a job\n/options - view advanced job options\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Found a bug?</b>\nPlease contact the bot owner at hs.develops.1@gmail.com.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"  # html
 delete_message = "Hey, tell me the name of the job you want to delete. Get /list of available jobs.\n\n(swipe left to reply to this message)"
 request_jobname_message = (
     "Give me your job name\n\n(swipe left to reply to this message)"
@@ -37,12 +37,12 @@ error_message = "You know that's not right..."
 checkcron_message = "Hey, send me your cron expression, I'll decrypt it for you.\n\n(swipe left to reply to this message)"
 checkcron_invalid_message = "Alright, that's not a valid cron. Click <a href='https://crontab.guru/'>here</a> if you need help."
 checkcron_meaning_message = "Ok, that means: "
-list_options_message = "Currently I only have one advanced option available LOL.\n\n/deleteprevious - Delete the previous message when the next message is sent. Ensures that only one message per job is in the chat at a time. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com."  # html
+list_options_message = "Currently I only have one advanced option available LOL.\n\n/deleteprevious - Delete the previous message when the next message is sent. Ensures that only one message per job is in the chat at a time. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"  # html
 option_delete_previous_message = "Tell me the name of the job you want to toggle the /deleteprevious option for. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
 exceed_limit_error_message = (
-    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\nIf you need to create more than %d jobs, please contact the bot owner at hs.develops.1@gmail.com."
+    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\nIf you need to create more than %d jobs, please contact the bot owner at hs.develops.1@gmail.com specifying:\n1. the number of jobs you need, and\n2. your Telegram handle.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"
     % (JOB_LIMIT_PER_PERSON, JOB_LIMIT_PER_PERSON)
-)
+)  # html
 
 """ GSheets config """
 # Create the Google Sheet manually. Set all values as plain text format.

@@ -72,7 +72,11 @@ def add(update, context):
 
     # person limit
     if sheets_service.exceed_user_limit(update.message.from_user.id):
-        update.message.reply_text(text=config.exceed_limit_error_message)
+        update.message.reply_text(
+            text=config.exceed_limit_error_message,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
         return
 
     update.message.reply_text(
@@ -194,7 +198,11 @@ def add_new_job(update):
 
     # person limit
     if sheets_service.exceed_user_limit(update.message.from_user.id):
-        update.message.reply_text(text=config.exceed_limit_error_message)
+        update.message.reply_text(
+            text=config.exceed_limit_error_message,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
         return
 
     # check name does not already exist
@@ -259,7 +267,7 @@ def add_timezone(update):
     )
 
 
-def add_message(update):
+def add_message(update, photo=False):
     sheets_service = SheetsService(update)
     entry_df = sheets_service.retrieve_latest_entry(update.message.chat.id)
 
@@ -267,21 +275,39 @@ def add_message(update):
         update.message.reply_text(config.simple_prompt_message, parse_mode="MarkdownV2")
         return
 
-    if len(get_value(entry_df, "content")) > 0:  # field must be empty
+    fields_to_update = {
+        "last_updated_by": str(update.message.from_user.id),
+    }
+
+    photo_group_id = update.message.media_group_id
+    photo_group_id = "" if photo_group_id is None else str(photo_group_id)
+    same_photo_group = len(photo_group_id) > 0 and photo_group_id == str(
+        get_value(entry_df, "photo_group_id")
+    )
+    if same_photo_group:  # group of photos
+        photo_id = update.message.photo[-1].file_id
+        photo_ids = "{};{}".format(get_value(entry_df, "photo_id"), photo_id)
+        fields_to_update["photo_id"] = photo_ids
+    elif (
+        len(str(get_value(entry_df, "content"))) > 0
+    ):  # field must not be filled already
         update.message.reply_text(
             config.prompt_new_job_message, parse_mode="MarkdownV2"
         )
         return
+    elif photo:  # single or first photo
+        caption = update.message.caption
+        photo_id = update.message.photo[-1].file_id
+        fields_to_update["content"] = "" if caption is None else caption
+        fields_to_update["photo_id"] = photo_id
+        fields_to_update["photo_group_id"] = photo_group_id
+    else:  # only text
+        fields_to_update["content"] = update.message.text
 
-    # update sheets entry
     updated_entry_df = edit_entry_multiple_fields(
         entry_df,
-        {
-            "content": update.message.text,
-            "last_updated_by": str(update.message.from_user.id),
-        },
+        fields_to_update,
     )
-
     sheets_service.update_entry(updated_entry_df)
 
     logger.info(
@@ -293,12 +319,13 @@ def add_message(update):
     )
 
     # reply
-    update.message.reply_text(
-        reply_markup=ForceReply(selective=True),
-        text=config.request_crontab_message,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
-    )
+    if not same_photo_group:
+        update.message.reply_text(
+            reply_markup=ForceReply(selective=True),
+            text=config.request_crontab_message,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
 
 
 def add_crontab(update):
@@ -484,6 +511,14 @@ def handle_messages(update, context):
         add_crontab(update)
 
 
+def handle_photos(update, context):
+    reply_to_message = update.message.reply_to_message
+    if reply_to_message is None:
+        return
+    if reply_to_message.text == config.request_text_message:
+        add_message(update, True)
+
+
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -494,7 +529,7 @@ def start_bot():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(config.TELEGARM_BOT_TOKEN, use_context=True)
+    updater = Updater(config.TELEGRAM_BOT_TOKEN, use_context=True)
 
     # stop updater if exists
     updater.stop()
@@ -515,6 +550,7 @@ def start_bot():
 
     # on noncommand i.e message
     dp.add_handler(MessageHandler(Filters.text, handle_messages))
+    dp.add_handler(MessageHandler(Filters.photo, handle_photos))
 
     # log all errors
     dp.add_error_handler(error)
@@ -524,8 +560,8 @@ def start_bot():
         updater.start_webhook(
             listen="0.0.0.0",
             port=int(getenv("PORT", 5000)),
-            url_path=config.TELEGARM_BOT_TOKEN,
-            webhook_url="%s/%s" % (config.BOTHOST, config.TELEGARM_BOT_TOKEN),
+            url_path=config.TELEGRAM_BOT_TOKEN,
+            webhook_url="%s/%s" % (config.BOTHOST, config.TELEGRAM_BOT_TOKEN),
         )
     else:
         # this project is deployed on Heroku
