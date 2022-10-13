@@ -1,0 +1,33 @@
+name: Deploy to uat
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+    branches:
+      - main
+jobs:
+  deploy:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Replace uat with current branch
+        run: |
+          git checkout -b uat
+          git push origin HEAD:uat --force
+      - name: Trigger bot deployment
+        run: | 
+          DEPLOY_ID=$(curl -s --request POST "https://api.render.com/deploy/srv-cd40if9a6gdlt3h5m3sg?key=${{ secrets.RENDER_DEPLOY_KEY }}" | jq -r '.deploy.id')
+          echo "DEPLOY_ID=$DEPLOY_ID" >> $GITHUB_ENV
+      - name: Wait for bot deployment
+        uses: nick-fields/retry@v2
+        with:
+          command: |
+            DEPLOY_STATUS=$(curl -s --request GET --url "https://api.render.com/v1/services/srv-cd40if9a6gdlt3h5m3sg/deploys/$DEPLOY_ID" --header "accept: application/json" --header "authorization: Bearer ${{ secrets.RENDER_API_TOKEN }}" | jq -r ".status")
+            echo $DEPLOY_STATUS
+            if [ "$DEPLOY_STATUS" != "live" ]; then
+              exit 1
+            fi
+          timeout_minutes: 10
+          max_attempts: 60

@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, timedelta
 from croniter import croniter
-from sheets import parse_time_mins
 import config
 
 
@@ -16,3 +15,15 @@ def calc_next_run(crontab, user_tz_offset):
     db_nextrun_ts = parse_time_mins(db_nextrun_datetime)
 
     return (user_nextrun_ts, db_nextrun_ts)
+
+
+def get_value(entry, key):
+    return entry.iloc[0][key]
+
+
+def parse_time_mins(datetime_obj):
+    return datetime_obj.strftime("%Y-%m-%d %H:%M")
+
+
+def parse_time_millis(datetime_obj):
+    return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")

@@ -2,22 +2,16 @@ import json
 from flask import Flask, Response
 from config import TELEGRAM_BOT_TOKEN, TZ_OFFSET
 from datetime import datetime, timedelta, timezone
-import logging
-from sheets import SheetsService, edit_entry_multiple_fields, parse_time_mins
+from common import log
+from common.sheets import SheetsService, edit_entry_multiple_fields
 import requests
-from helper import calc_next_run
+from common.utils import calc_next_run, parse_time_mins
 import gc
 
 app = Flask(__name__)
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
 
-logger = logging.getLogger(__name__)
-
-
-@app.route("/", methods=["GET", "POST"])
+@app.route("/api", methods=["GET", "POST"])
 def run():
     # TODO - allow only POST
     # TODO - add authentication
@@ -26,14 +20,16 @@ def run():
     parsed_time = parse_time_mins(now)
     entries = sheets_service.get_entries_by_nextrun(parsed_time)
 
-    if len(entries) < 1:
-        logger.info("No messages sent")
-        gc.collect()
+    log.log_entry_count(len(entries))
 
+    if len(entries) < 1:
+        log.log_completion(0, len(entries))
+        gc.collect()
         return Response(status=200)
 
-    for i, row in entries:
-        chat_id = row["chat_id"]
+    count = 0
+    for _, row in entries:
+        chat_id = row["channel_id"] if row["channel_id"] != "" else row["chat_id"]
         content = row["content"]
         photo_id = row["photo_id"]
         photo_group_id = str(row["photo_group_id"])
@@ -59,8 +55,11 @@ def run():
             },
         )
         sheets_service.update_entry(updated_entry)
+        count = count + 1
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
+
+    log.log_completion(count, len(entries))
 
     return Response(status=200)
 
@@ -103,24 +102,18 @@ def send_message(chat_id, content, photo_id, photo_group_id):
         )
         response = requests.post(telebot_api_endpoint, files=files)
     elif photo_id != "":  # single photo
-        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendPhoto?chat_id={}&photo={}&caption={}".format(
+        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendPhoto?chat_id={}&photo={}&caption={}&parse_mode=html".format(
             TELEGRAM_BOT_TOKEN, chat_id, photo_id, content
         )
         response = requests.get(telebot_api_endpoint)
-    else:  # normal message
-        telebot_api_endpoint = (
-            "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}".format(
-                TELEGRAM_BOT_TOKEN, chat_id, content
-            )
+    else:  # text message
+        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=html".format(
+            TELEGRAM_BOT_TOKEN, chat_id, content
         )
         response = requests.get(telebot_api_endpoint)
 
-    logger.info(
-        'Message sent, chat_id=%s, message="%s", response_status=%s',
-        chat_id,
-        content,
-        response.status_code,
-    )
+    log.log_api_send_message(chat_id, content, response.status_code)
+
     if response.status_code != 200:
         return "", "Error {}: {}".format(
             response.status_code, response.json()["description"]
@@ -143,12 +136,7 @@ def delete_message(chat_id, previous_message_id):
             TELEGRAM_BOT_TOKEN, chat_id, message_id
         )
         response = requests.get(telebot_api_endpoint)
-        logger.info(
-            'Message deleted, chat_id=%s, message_id="%s", response_status=%s',
-            chat_id,
-            message_id,
-            response.status_code,
-        )
+        log.log_api_previous_message_deletion(chat_id, message_id, response.status_code)
     return response.json()["ok"]
 
 
