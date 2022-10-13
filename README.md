@@ -1,39 +1,39 @@
-# Recurring Messages Telebot
+# RM Bot
 
-Recurring Messages Telebot is a Telegram bot. It's available at https://t.me/cron_telebot. :sparkles:
+RM Bot ([@cron_telebot](https://t.me/cron_telebot)) is a Telegram bot that schedules recurring Telegram messages. :sparkles:
 
-One project, two deployments/entrypoints. [bot.py](./bot.py) runs the Telegram bot, while [app.py](./app.py) runs the Flask application.
+Refer to our [user guide](https://github.com/hsdevelops/rm-bot/wiki/User-Guide) for usage instructions.
 
 ## Noteworthy files
-1. [app.py](./app.py) — flask app, ping the endpoint to trigger check and send all required messages
-2. [bot.py](./bot.py) — telegram bot, to add/delete/view the recurring jobs
+1. [main.py](./main.py) — telegram bot, to add/delete/view the recurring jobs
+2. [api.py](./api.py) — flask app, ping the endpoint to trigger check and send all required messages
 3. [config.py](./config.py) — all the configurations you need to change for the bot
-4. [sheets.py](./sheets.py) — handles calls to the gsheet we currently use as our database, and can be easily tweaked to link to other databases like MongoDB.
-5. [Procfile](./Procfile) — defines entrypoint for deployment on Heroku
+4. [sheets.py](./common/sheets.py) — handles calls to the gsheet we currently use as our database, and can be easily tweaked to link to other databases like MongoDB.
+
+## Prerequisites
+1. Telegram bot created with [@botfather](https://telegram.me/botfather)
+2. A Google Cloud Service Account ([documentation](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating))
+3. Existing Google Sheet
+   * Copy this [Google Sheet template](https://docs.google.com/spreadsheets/d/1FKfdxax5hDHdCZ1K1TTI1G8pO4hES1oloK6ob0Spk-w/edit?usp=sharing)
+   * Share the Google Sheet with the `SERVICE_ACCOUNT_INFO_CLIENT_EMAIL` of the Google Cloud Service Account
 
 ## Running locally
 
-### Prerequisites
-1. Python, pip
-2. Telegram bot created with [@botfather](https://telegram.me/botfather)
-3. A Google Cloud Console Account
-4. Existing Google Sheet
+1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.
 
-### 1. Configure environment variables 
-Check out [config.py](./config.py) to find out what environment variables are required and how you can get them.
+2. Install Python and pip and set up virtual environment. 
+   ```
+   virtualenv venv
+   source venv/bin/activate
+   pip install -r requirements-all.txt
+   ```
 
-### 2. Set up virtual environment
-```
-virtualenv venv
-source venv/bin/activate
-pip install -r requirements-all.txt
-```
-
-### 3. Start services
-Run `python bot.py` to start the telegram bot. On another terminal, run `python app.py` to start the Flask endpoint.
+3. Start services. Run `python main.py` to start the telegram bot. On another terminal, run `python api.py` to start the Flask endpoint (base path is `/api`).
 
 ## Running in production
-More environment variables need to be set. See [config.py](./config.py) and [Procfile](./Procfile) for these variables.
+1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.
+   * Remember to set the ENV environment variable to any value of your choice (e.g. `dev`, `uat`, `prod`)
+2. Entrypoint is `gunicorn main:app`. No need to run bot and api separately.
 
 ## Contributing
 

@@ -1,42 +1,35 @@
 # TODO - clean db (if created > 1 month before, some fields are empty)
 
-import logging
 import config
 from google.oauth2 import service_account
 import pygsheets
 from datetime import datetime, timedelta, timezone
 import numpy as np
-
-
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-
-logger = logging.getLogger(__name__)
+from common import log
+from common.utils import get_value, parse_time_millis
 
 # define service
 class SheetsService:
     def __init__(self, update=None):
-        if config.ENV:
-            service_account_info = {
-                "type": config.SERVICE_ACCOUNT_INFO_TYPE,
-                "project_id": config.SERVICE_ACCOUNT_INFO_PROJECT_ID,
-                "private_key_id": config.SERVICE_ACCOUNT_INFO_PRIVATE_KEY_ID,
-                "private_key": config.SERVICE_ACCOUNT_INFO_PRIVATE_KEY,
-                "client_email": config.SERVICE_ACCOUNT_INFO_CLIENT_EMAIL,
-                "client_id": config.SERVICE_ACCOUNT_INFO_CLIENT_ID,
-                "auth_uri": config.SERVICE_ACCOUNT_INFO_AUTH_URI,
-                "token_uri": config.SERVICE_ACCOUNT_INFO_TOKEN_URI,
-                "auth_provider_x509_cert_url": config.SERVICE_ACCOUNT_INFO_AUTH_PROVIDER_X509_CERT_URL,
-                "client_x509_cert_url": config.SERVICE_ACCOUNT_INFO_CLIENT_X509_CERT_URL,
-            }
-            creds = service_account.Credentials.from_service_account_info(
-                service_account_info, scopes=config.SCOPES
-            )
-            self.gc = pygsheets.authorize(custom_credentials=creds)
-        else:
-            self.gc = pygsheets.authorize(service_file="keys.json")
+        # if config.ENV:
+        service_account_info = {
+            "type": config.SERVICE_ACCOUNT_INFO_TYPE,
+            "project_id": config.SERVICE_ACCOUNT_INFO_PROJECT_ID,
+            "private_key_id": config.SERVICE_ACCOUNT_INFO_PRIVATE_KEY_ID,
+            "private_key": config.SERVICE_ACCOUNT_INFO_PRIVATE_KEY,
+            "client_email": config.SERVICE_ACCOUNT_INFO_CLIENT_EMAIL,
+            "client_id": config.SERVICE_ACCOUNT_INFO_CLIENT_ID,
+            "auth_uri": config.SERVICE_ACCOUNT_INFO_AUTH_URI,
+            "token_uri": config.SERVICE_ACCOUNT_INFO_TOKEN_URI,
+            "auth_provider_x509_cert_url": config.SERVICE_ACCOUNT_INFO_AUTH_PROVIDER_X509_CERT_URL,
+            "client_x509_cert_url": config.SERVICE_ACCOUNT_INFO_CLIENT_X509_CERT_URL,
+        }
+        creds = service_account.Credentials.from_service_account_info(
+            service_account_info, scopes=config.SCOPES
+        )
+        self.gc = pygsheets.authorize(custom_credentials=creds)
+        # else:
+        #     self.gc = pygsheets.authorize(service_file="keys.json")
 
         gsheet = self.gc.open_by_key(config.GSHEET_ID)
         self.main_worksheet = gsheet.worksheet_by_title(config.JOB_DATA_SHEETNAME)
@@ -49,22 +42,39 @@ class SheetsService:
         if update is not None:
             self.sync_user_data(update)
 
-    def add_new_entry(self, chat_id, jobname, userid):
+    def add_new_entry(
+        self,
+        chat_id,
+        jobname,  # must have jobname for /delete
+        userid,
+        channel_id="",
+        crontab="",
+        content="",
+        photo_id="",
+        photo_group_id="",
+    ):
         now = parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
         self.main_worksheet.insert_rows(
             row=1,
-            values=[now, now, userid, userid, str(chat_id), jobname],
+            values=[
+                now,
+                now,
+                userid,
+                userid,
+                str(chat_id),
+                str(channel_id),
+                jobname,
+                crontab,
+                content,
+                photo_id,
+                photo_group_id,
+            ],
             inherit=True,
         )
 
-        logger.info(
-            'New job entry "%s" added by user "%s", chat_id=%s',
-            jobname,
-            userid,
-            str(chat_id),
-        )
+        log.log_new_entry(jobname, chat_id)
 
     def retrieve_latest_entry(self, chat_id):
         df = self.main_worksheet.get_as_df()
@@ -86,13 +96,7 @@ class SheetsService:
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
         self.main_worksheet.update_row(row_number, entry.astype(str).iloc[0].tolist())
-
-        logger.info(
-            'Job entry "%s" updated by user "%s", chat_id=%s',
-            get_value(entry, "jobname"),
-            get_value(entry, "last_updated_by"),
-            str(get_value(entry, "chat_id")),
-        )
+        log.log_entry_updated(entry)
 
     def retrieve_specific_entry(self, chat_id, jobname, include_removed=False):
         df = self.main_worksheet.get_as_df()
@@ -156,6 +160,11 @@ class SheetsService:
             return None
         return float(get_value(result, "tz_offset"))
 
+    def check_chat_exists(self, chat_id):
+        df = self.chat_data_worksheet.get_as_df()
+        df["chat_id"] = df["chat_id"].astype("str")
+        return len(df[df["chat_id"] == str(chat_id)]) > 0
+
     def add_chat_data(
         self,
         chat_id,
@@ -184,14 +193,7 @@ class SheetsService:
             inherit=True,
         )
 
-        logger.info(
-            'New chat entry created by user "%s", chat_id=%s, chat_title=%s',
-            created_by,
-            str(chat_id),
-            chat_title,
-        )
-
-        return
+        log.log_new_chat(chat_id, chat_title)
 
     def add_user(self, user_id, username, first_name):
         now = parse_time_millis(
@@ -200,12 +202,7 @@ class SheetsService:
         self.user_data_worksheet.insert_rows(
             row=1, values=[str(user_id), username, first_name, now, now], inherit=True
         )
-
-        logger.info(
-            'New user created, user_id=%s, username="%s"',
-            str(user_id),
-            username,
-        )
+        log.log_new_user(user_id, username)
 
     def retrieve_user_data(self, user_id):
         df = self.user_data_worksheet.get_as_df()
@@ -234,12 +231,7 @@ class SheetsService:
         entry["user_id"] = entry["user_id"].astype(str)  # type check
 
         self.user_data_worksheet.update_row(row_number, entry.iloc[0].tolist())
-
-        logger.info(
-            'User superseded, user_id=%s, field_changed="%s"',
-            get_value(entry, "user_id"),
-            field_changed,
-        )
+        log.log_user_updated(entry)
 
     def refresh_user(self, entry):
         now = parse_time_millis(
@@ -259,13 +251,11 @@ class SheetsService:
 
         if user is None:
             # user is new, add to db
-            self.add_user(
+            return self.add_user(
                 update.message.from_user.id,
                 update.message.from_user.username,
                 update.message.from_user.first_name,
             )
-
-            return
 
         # check that username hasn't changed
         previous_username = (
@@ -280,12 +270,7 @@ class SheetsService:
             )
             self.sync_user_data(update)
 
-            logger.info(
-                "User's username updated, new username=%s, user_id=%s",
-                update.message.from_user.username,
-                update.message.from_user.id,
-            )
-            return
+            return log.log_username_updated(update)
 
         # check that firstname hasn't changed
         if update.message.from_user.first_name != str(get_value(user, "first_name")):
@@ -296,13 +281,7 @@ class SheetsService:
                 update.message.from_user.first_name,
             )
 
-            logger.info(
-                "User's first_name updated, new first_name=%s, username=%s, user_id=%s",
-                update.message.from_user.first_name,
-                update.message.from_user.username,
-                update.message.from_user.id,
-            )
-            return
+            return log.log_firstname_updated(update)
 
         self.refresh_user(user)
 
@@ -333,15 +312,3 @@ def edit_entry_multiple_fields(entry, key_value_pairs):
     for key in key_value_pairs:
         entry.at[0, key] = key_value_pairs[key]
     return entry
-
-
-def get_value(entry, key):
-    return entry.iloc[0][key]
-
-
-def parse_time_mins(datetime_obj):
-    return datetime_obj.strftime("%Y-%m-%d %H:%M")
-
-
-def parse_time_millis(datetime_obj):
-    return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
