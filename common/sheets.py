@@ -50,6 +50,7 @@ class SheetsService:
         channel_id="",
         crontab="",
         content="",
+        content_type="",
         photo_id="",
         photo_group_id="",
     ):
@@ -68,6 +69,7 @@ class SheetsService:
                 jobname,
                 crontab,
                 content,
+                content_type,
                 photo_id,
                 photo_group_id,
             ],
@@ -95,7 +97,9 @@ class SheetsService:
         entry = edit_entry_single_field(entry, "last_update_ts", now)
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
-        self.main_worksheet.update_row(row_number, entry.astype(str).iloc[0].tolist())
+        self.main_worksheet.update_row(
+            row_number, entry.astype(str).iloc[0].tolist()
+        )  # source of bug
         log.log_entry_updated(entry)
 
     def retrieve_specific_entry(self, chat_id, jobname, include_removed=False):
@@ -160,10 +164,31 @@ class SheetsService:
             return None
         return float(get_value(result, "tz_offset"))
 
-    def check_chat_exists(self, chat_id):
+    def get_chat_entry(self, chat_id):
         df = self.chat_data_worksheet.get_as_df()
+        df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
         df["chat_id"] = df["chat_id"].astype("str")
-        return len(df[df["chat_id"] == str(chat_id)]) > 0
+        result = df[df["chat_id"] == str(chat_id)]
+        if len(result) < 1:
+            return None
+        return result
+
+    def update_chat_entry(self, entry):
+        now = parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
+        entry = edit_entry_multiple_fields(
+            entry, {"updated_ts": now, "utc_tz": "'%s" % get_value(entry, "utc_tz")}
+        )
+        row_number = entry["gsheet_row_number"]
+        entry = entry.drop(columns="gsheet_row_number")
+        self.chat_data_worksheet.update_row(
+            row_number, entry.astype(str).iloc[0].tolist()
+        )  # source of bug
+        log.log_chat_entry_updated(entry)
+
+    def check_chat_exists(self, chat_id):
+        return self.get_chat_entry(chat_id) is not None
 
     def add_chat_data(
         self,

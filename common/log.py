@@ -108,6 +108,14 @@ def log_entry_updated(entry):
     )
 
 
+def log_chat_entry_updated(entry):
+    logger.info(
+        '[SHEET] Updated chat restriction to "%s", chat_id=%s',
+        get_value(entry, "restriction"),
+        str(get_value(entry, "chat_id")),
+    )
+
+
 def log_user_updated(entry):
     logger.info(
         '[SHEET] Superseded user, user_id=%s, field_changed="%s"',

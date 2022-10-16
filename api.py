@@ -31,12 +31,15 @@ def run():
     for _, row in entries:
         chat_id = row["channel_id"] if row["channel_id"] != "" else row["chat_id"]
         content = row["content"]
+        content_type = row["content_type"]
         photo_id = row["photo_id"]
         photo_group_id = str(row["photo_group_id"])
         crontab = row["crontab"]
         previous_message_id = str(row["previous_message_id"])
 
-        bot_message_id, err = send_message(chat_id, content, photo_id, photo_group_id)
+        bot_message_id, err = send_message(
+            chat_id, content, content_type, photo_id, photo_group_id
+        )
         if row["option_delete_previous"] != "" and previous_message_id != "":
             delete_message(chat_id, previous_message_id)
 
@@ -92,7 +95,7 @@ def prepare_photos(photo_id, content):
     return json.dumps(media), files
 
 
-def send_message(chat_id, content, photo_id, photo_group_id):
+def send_message(chat_id, content, content_type, photo_id, photo_group_id):
     if photo_group_id != "":  # media group
         media, files = prepare_photos(photo_id, content)
         telebot_api_endpoint = (
@@ -106,6 +109,27 @@ def send_message(chat_id, content, photo_id, photo_group_id):
             TELEGRAM_BOT_TOKEN, chat_id, photo_id, content
         )
         response = requests.get(telebot_api_endpoint)
+    elif content_type == "poll":
+        poll_content = json.loads(content)
+        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendPoll".format(
+            TELEGRAM_BOT_TOKEN
+        )
+        parameters = {
+            "chat_id": chat_id,
+            "question": poll_content.get("question"),
+            "options": json.dumps(
+                [option.get("text") for option in poll_content.get("options")]
+            ),
+            "type": poll_content.get("type"),
+            "is_anonymous": poll_content.get("is_anonymous"),
+            "allows_multiple_answers": poll_content.get("allows_multiple_answers"),
+            "correct_option_id": poll_content.get("correct_option_id"),
+            "explanation": poll_content.get("explanation"),
+            "explanation_parse_mode": "html",
+            "is_closed": poll_content.get("is_closed"),
+            "close_date": poll_content.get("close_date"),
+        }
+        response = requests.get(telebot_api_endpoint, data=parameters)
     else:  # text message
         telebot_api_endpoint = "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=html".format(
             TELEGRAM_BOT_TOKEN, chat_id, content

@@ -2,15 +2,17 @@ from common.utils import calc_next_run, get_value, parse_time_millis
 from common import log, sheets
 
 import re
+import jsons
+from bot import replies
 from config import TZ_OFFSET
 from cron_descriptor import get_description
 from datetime import datetime, timezone, timedelta
 
-from bot import replies
 
-
-def show_job_details(update):
+def show_job_details(update, context):
     sheets_service = sheets.SheetsService(update)
+    if not check_rights(update, context, sheets_service):
+        return
 
     entry_df = sheets_service.retrieve_specific_entry(
         update.message.chat.id, update.message.text
@@ -22,8 +24,10 @@ def show_job_details(update):
     replies.send_job_details(update, entry_df)
 
 
-def add_new_job(update):
+def add_new_job(update, context):
     sheets_service = sheets.SheetsService(update)
+    if not check_rights(update, context, sheets_service):
+        return
 
     # timezone must be defined in order to create new job
     if sheets_service.retrieve_tz(update.message.chat.id) is None:
@@ -77,10 +81,12 @@ def add_timezone(update):
     replies.send_help_message(update)
 
 
-def add_message(update, photo=False):
+def add_message(update, context, photo=False, poll=False):
     sheets_service = sheets.SheetsService(update)
-    entry_df = sheets_service.retrieve_latest_entry(update.message.chat.id)
+    if not check_rights(update, context, sheets_service):
+        return
 
+    entry_df = sheets_service.retrieve_latest_entry(update.message.chat.id)
     if entry_df is None:
         return replies.send_simple_prompt_message(update)
 
@@ -98,22 +104,31 @@ def add_message(update, photo=False):
         photo_id = update.message.photo[-1].file_id
         photo_ids = "{};{}".format(get_value(entry_df, "photo_id"), photo_id)
         fields_to_update["photo_id"] = photo_ids
+        fields_to_update["content_type"] = "photo_group"
     elif get_value(entry_df, "content") != "":  # field must not be filled already
         return replies.send_prompt_new_job_message(update)
+    elif poll:
+        fields_to_update["content_type"] = "poll"
+        poll_json = update.message.poll
+        fields_to_update["content"] = jsons.dumps(poll_json)
     elif photo and photo_group_id != "":  # first photo of media group
         fields_to_update["photo_id"] = update.message.photo[-1].file_id
         fields_to_update["photo_group_id"] = photo_group_id
         fields_to_update["content"] = (
             "" if update.message.caption is None else update.message.caption
         )
+        fields_to_update["content_type"] = "photo_group"
     elif photo:  # single photo
         fields_to_update["photo_id"] = update.message.photo[-1].file_id
         fields_to_update["photo_group_id"] = photo_group_id
         fields_to_update["content"] = (
             "" if update.message.caption is None else update.message.caption_html
         )
+        fields_to_update["content_type"] = "single_photo"
     else:  # only text
         fields_to_update["content"] = update.message.text_html
+        fields_to_update["content"] = update.message.text_html
+        fields_to_update["content_type"] = "text"
 
     updated_entry_df = sheets.edit_entry_multiple_fields(
         entry_df,
@@ -127,13 +142,17 @@ def add_message(update, photo=False):
         replies.send_request_crontab_message(update)
 
 
-def add_crontab(update):
+def add_crontab(update, context):
+
     try:
         description = get_description(update.message.text).lower()
     except Exception:  # crontab is not valid
         return replies.send_invalid_crontab_message(update)
 
     sheets_service = sheets.SheetsService(update)
+    if not check_rights(update, context, sheets_service):
+        return
+
     entry_df = sheets_service.retrieve_latest_entry(update.message.chat.id)
 
     if entry_df is None:
@@ -164,10 +183,13 @@ def add_crontab(update):
     replies.send_confirm_message(update, entry_df, description)
 
 
-def remove_job(update):
+def remove_job(update, context):
     now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
 
     sheets_service = sheets.SheetsService(update)
+    if not check_rights(update, context, sheets_service):
+        return
+
     entry_df = sheets_service.retrieve_specific_entry(
         update.message.chat.id, update.message.text
     )
@@ -197,8 +219,11 @@ def decrypt_cron(update):
     replies.send_checkcron_meaning_message(update, description)
 
 
-def toggle_delete_previous(update):
+def toggle_delete_previous(update, context):
     sheets_service = sheets.SheetsService(update)
+    if not check_rights(update, context, sheets_service):
+        return
+
     entry_df = sheets_service.retrieve_specific_entry(
         update.message.chat.id, update.message.text
     )
@@ -225,7 +250,11 @@ def toggle_delete_previous(update):
     )
 
 
-def add_new_channel_job(update):
+def add_new_channel_job(update, poll=False):
+    # channel jobs can only be set up from private chats
+    if update.message.chat.type != "private":
+        return
+
     forwarded_chat_info = update.message.forward_from_chat
 
     # job creation by forwarded messages only for channels
@@ -275,42 +304,130 @@ def add_new_channel_job(update):
         )
         return sheets_service.update_entry(updated_entry_df)
 
-    # person limit
+    # new job to be created, assert job limit
     if sheets_service.exceed_user_limit(update.message.from_user.id):
         return replies.send_exceed_limit_error_message(update)
 
+    # add new job
     content = update.message.caption
+    content_type = "single_photo"
     if content is None:
         content = update.message.text_html
+        content_type = "text"
     elif photo_group_id == "":
         content = update.message.caption_html
+        content_type = "photo_group"
 
-    if (
-        entry_df is None
-        or get_value(entry_df, "jobname") != ""
-        or get_value(entry_df, "content") != ""
-    ):  # single/first photo or text
-        photo_id = (
-            "" if len(update.message.photo) < 1 else update.message.photo[-1].file_id
-        )
+    if poll:
+        content_type = "poll"
+        poll_json = update.message.poll
+        content = jsons.dumps(poll_json)
 
-        # populate jobname for channels
-        number = 1
+    photo_id = "" if len(update.message.photo) < 1 else update.message.photo[-1].file_id
+
+    # populate jobname for channels
+    number = 1
+    jobname = "%s (%d)" % (forwarded_chat_info.title[:6], number)
+    while sheets_service.check_exists(update.message.chat.id, jobname):
+        number = number + 1
         jobname = "%s (%d)" % (forwarded_chat_info.title[:6], number)
-        while sheets_service.check_exists(update.message.chat.id, jobname):
-            number = number + 1
-            jobname = "%s (%d)" % (forwarded_chat_info.title[:6], number)
 
-        sheets_service.add_new_entry(
-            chat_id=update.message.chat.id,
-            channel_id=forwarded_chat_info.id,
-            jobname=jobname,
-            userid=update.message.from_user.id,
-            crontab="",
-            content=content,
-            photo_id=photo_id,
-            photo_group_id=photo_group_id,
+    sheets_service.add_new_entry(
+        chat_id=update.message.chat.id,
+        channel_id=forwarded_chat_info.id,
+        jobname=jobname,
+        userid=update.message.from_user.id,
+        crontab="",
+        content=content,
+        content_type=content_type,
+        photo_id=photo_id,
+        photo_group_id=photo_group_id,
+    )
+
+    log.log_new_channel_job_added(update)
+    replies.send_request_crontab_message(update)
+
+
+def restrict_to_admins(update, sheets_service):
+
+    sheets_service = sheets.SheetsService(update)
+
+    entry_df = sheets_service.get_chat_entry(update.message.chat.id)
+    if entry_df is None:
+        return
+
+    current_restriction = get_value(entry_df, "restriction")
+
+    if current_restriction == "administrator":
+        entry_df = sheets.edit_entry_single_field(entry_df, "restriction", "")
+        sheets_service.update_chat_entry(entry_df)
+        return replies.send_restrict_success_message(update, "everyone")
+
+    if current_restriction == "creator":
+        return replies.send_wrong_restrction_message(update, "the current bot user")
+
+    entry_df = sheets.edit_entry_single_field(entry_df, "restriction", "administrator")
+    sheets_service.update_chat_entry(entry_df)
+
+    return replies.send_restrict_success_message(update, "only group admins")
+
+
+def restrict_to_user(update, sheets_service):
+    # user running this command must be creator
+
+    entry_df = sheets_service.get_chat_entry(update.message.chat.id)
+    if entry_df is None:
+        return
+
+    user_id = update.message.from_user.id
+    if str(user_id) != str(get_value(entry_df, "created_by")):
+        return replies.send_user_unauthorized_error_message(
+            update, "the current bot user"
         )
 
-        log.log_new_channel_job_added(update)
-        replies.send_request_crontab_message(update)
+    current_restriction = get_value(entry_df, "restriction")
+    if current_restriction == "administrator":
+        return replies.send_wrong_restrction_message(update, "group admins")
+
+    if current_restriction == "creator":
+        entry_df = sheets.edit_entry_single_field(entry_df, "restriction", "")
+        sheets_service.update_chat_entry(entry_df)
+        return replies.send_restrict_success_message(update, "everyone")
+
+    entry_df = sheets.edit_entry_single_field(entry_df, "restriction", "creator")
+    sheets_service.update_chat_entry(entry_df)
+
+    return replies.send_restrict_success_message(update, "only you")
+
+
+# def need to check if chat has this shit set else don't allow walao
+def check_rights(update, context, sheets_service, must_be_admin=False):
+    user_id = update.message.from_user.id
+    group_id = update.message.chat.id
+
+    entry_df = sheets_service.get_chat_entry(group_id)
+    if entry_df is None:
+        return
+
+    current_restriction = get_value(entry_df, "restriction")
+
+    if current_restriction == "creator" and str(user_id) != str(
+        get_value(entry_df, "created_by")
+    ):
+        return replies.send_user_unauthorized_error_message(
+            update, "the current bot user"
+        )
+
+    is_admin = context.bot.get_chat_member(group_id, user_id).status in [
+        "administrator",
+        "creator",
+    ]
+    if (
+        must_be_admin
+        and not is_admin
+        or current_restriction == "administrator"
+        and not is_admin
+    ):
+        return replies.send_user_unauthorized_error_message(update, "group admins")
+
+    return True
