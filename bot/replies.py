@@ -1,7 +1,9 @@
+import json
 from config import JOB_LIMIT_PER_PERSON
 from telegram.forcereply import ForceReply
 from telegram import ParseMode, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from common.utils import get_value
+
 
 # custom messages
 start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"  # html
@@ -43,11 +45,11 @@ wrong_restrction_error_message = (
 
 def prepare_keyboard(entries):
     keyboard = []
-    for i, row in entries:
+    for i, row in enumerate(entries):  # TODO check delete for sheets
         if i % 2 == 0:
-            keyboard.append([row["jobname"]])
+            keyboard.append([row.get("jobname")])
             continue
-        keyboard[len(keyboard) - 1].append(row["jobname"])
+        keyboard[len(keyboard) - 1].append(row.get("jobname"))
     return keyboard
 
 
@@ -127,10 +129,16 @@ def send_option_delete_previous_message(update, entries):
 
 def send_job_details(update, entry_df):
     photo_id = str(get_value(entry_df, "photo_id"))
+    content = get_value(entry_df, "content")
+
+    content_type = get_value(entry_df, "content_type")
+    if content_type == "poll":
+        content = "(Poll) %s" % json.loads(content).get("question")
+
     reply_text = "<b>Job name</b>: {}\n<b>Cron</b>: {}\n<b>Content</b>: {}\n<b>Photos</b>: {}\n<b>Category</b>: {}\n<b>Next run</b>: {}\n\n<b>Advanced options</b>\n/deleteprevious: {}".format(
         get_value(entry_df, "jobname"),
         get_value(entry_df, "crontab"),
-        get_value(entry_df, "content"),
+        content,
         "no" if photo_id == "" else len(photo_id.split(";")),
         "in-chat" if get_value(entry_df, "channel_id") == "" else "channel",
         get_value(entry_df, "user_nextrun_ts"),

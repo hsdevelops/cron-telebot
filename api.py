@@ -1,12 +1,12 @@
-import json
-from flask import Flask, Response
-from config import TELEGRAM_BOT_TOKEN, TZ_OFFSET
-from datetime import datetime, timedelta, timezone
-from common import log
-from common.sheets import SheetsService, edit_entry_multiple_fields
-import requests
-from common.utils import calc_next_run, parse_time_mins
 import gc
+import json
+import requests
+from common import log, utils
+from database.db import Database
+from flask import Flask, Response
+from config import TELEGRAM_BOT_TOKEN, TZ_OFFSET, DB_TYPE
+from datetime import datetime, timedelta, timezone
+
 
 app = Flask(__name__)
 
@@ -15,10 +15,10 @@ app = Flask(__name__)
 def run():
     # TODO - allow only POST
     # TODO - add authentication
-    sheets_service = SheetsService()
+    db_service = Database().service
     now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
-    parsed_time = parse_time_mins(now)
-    entries = sheets_service.get_entries_by_nextrun(parsed_time)
+    parsed_time = utils.parse_time_mins(now)
+    entries = db_service.get_entries_by_nextrun(parsed_time)
 
     log.log_entry_count(len(entries))
 
@@ -28,27 +28,29 @@ def run():
         return Response(status=200)
 
     count = 0
-    for _, row in entries:
-        chat_id = row["channel_id"] if row["channel_id"] != "" else row["chat_id"]
-        content = row["content"]
-        content_type = row["content_type"]
-        photo_id = row["photo_id"]
-        photo_group_id = str(row["photo_group_id"])
-        crontab = row["crontab"]
-        previous_message_id = str(row["previous_message_id"])
+    for row in entries:
+        chat_id = (
+            row.get("channel_id") if row.get("channel_id") != "" else row.get("chat_id")
+        )
+        content = row.get("content")
+        content_type = row.get("content_type")
+        photo_id = row.get("photo_id")
+        photo_group_id = str(row.get("photo_group_id", ""))
+        crontab = row.get("crontab")
+        previous_message_id = str(row.get("previous_message_id", ""))
 
         bot_message_id, err = send_message(
             chat_id, content, content_type, photo_id, photo_group_id
         )
-        if row["option_delete_previous"] != "" and previous_message_id != "":
+        if row.get("option_delete_previous", "") != "" and previous_message_id != "":
             delete_message(chat_id, previous_message_id)
 
         # calculate and update next run time
-        user_tz_offset = sheets_service.retrieve_tz(chat_id)
-        user_nextrun_ts, db_nextrun_ts = calc_next_run(crontab, user_tz_offset)
+        user_tz_offset = db_service.retrieve_tz(chat_id)
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
 
-        updated_entry = edit_entry_multiple_fields(
-            row.to_frame().T,
+        updated_entry = utils.edit_entry_multiple_fields(
+            row if DB_TYPE == "mongo" else row.to_frame().T,  # TODO
             {
                 "nextrun_ts": db_nextrun_ts,
                 "user_nextrun_ts": user_nextrun_ts,
@@ -57,7 +59,7 @@ def run():
                 "removed_ts": "" if err is None else parsed_time,
             },
         )
-        sheets_service.update_entry(updated_entry)
+        db_service.update_entry(updated_entry)
         count = count + 1
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535

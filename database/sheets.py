@@ -1,12 +1,11 @@
 # TODO - clean db (if created > 1 month before, some fields are empty)
 
 import config
-from google.oauth2 import service_account
 import pygsheets
-from datetime import datetime, timedelta, timezone
 import numpy as np
-from common import log
-from common.utils import get_value, parse_time_millis
+from common import log, utils
+from google.oauth2 import service_account
+from datetime import datetime, timedelta, timezone
 
 # define service
 class SheetsService:
@@ -46,7 +45,7 @@ class SheetsService:
         self,
         chat_id,
         jobname,  # must have jobname for /delete
-        userid,
+        user_id,
         channel_id="",
         crontab="",
         content="",
@@ -54,7 +53,7 @@ class SheetsService:
         photo_id="",
         photo_group_id="",
     ):
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
         self.main_worksheet.insert_rows(
@@ -62,8 +61,8 @@ class SheetsService:
             values=[
                 now,
                 now,
-                userid,
-                userid,
+                user_id,
+                user_id,
                 str(chat_id),
                 str(channel_id),
                 jobname,
@@ -91,10 +90,10 @@ class SheetsService:
         return result
 
     def update_entry(self, entry):
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
-        entry = edit_entry_single_field(entry, "last_update_ts", now)
+        entry = utils.edit_entry_single_field(entry, "last_update_ts", now)
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
         self.main_worksheet.update_row(
@@ -138,7 +137,7 @@ class SheetsService:
         filtered_df = df[
             (df["nextrun_ts"] <= ts) & (df["removed_ts"] == "") & (df["crontab"] != "")
         ].iterrows()
-        return list(filtered_df)
+        return [row for _, row in filtered_df]
 
     def get_entries_by_chatid(self, chat_id):
         df = self.main_worksheet.get_as_df()
@@ -162,7 +161,7 @@ class SheetsService:
         result = df[df["chat_id"] == chat_id]
         if len(result) < 1:
             return None
-        return float(get_value(result, "tz_offset"))
+        return float(utils.get_value(result, "tz_offset"))
 
     def get_chat_entry(self, chat_id):
         df = self.chat_data_worksheet.get_as_df()
@@ -174,11 +173,12 @@ class SheetsService:
         return result
 
     def update_chat_entry(self, entry):
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
-        entry = edit_entry_multiple_fields(
-            entry, {"updated_ts": now, "utc_tz": "'%s" % get_value(entry, "utc_tz")}
+        entry = utils.edit_entry_multiple_fields(
+            entry,
+            {"updated_ts": now, "utc_tz": "'%s" % utils.get_value(entry, "utc_tz")},
         )
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
@@ -200,7 +200,7 @@ class SheetsService:
         created_by,
         telegram_ts,
     ):
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
         self.chat_data_worksheet.insert_rows(
@@ -212,7 +212,7 @@ class SheetsService:
                 tz_offset,
                 utc_tz,
                 created_by,
-                parse_time_millis(telegram_ts),
+                utils.parse_time_millis(telegram_ts),
                 now,
             ],
             inherit=True,
@@ -221,7 +221,7 @@ class SheetsService:
         log.log_new_chat(chat_id, chat_title)
 
     def add_user(self, user_id, username, first_name):
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
         self.user_data_worksheet.insert_rows(
@@ -239,10 +239,10 @@ class SheetsService:
 
     def supersede_user(self, entry, field_changed):
         # update previous entry
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
-        entry = edit_entry_multiple_fields(
+        entry = utils.edit_entry_multiple_fields(
             entry,
             {
                 "superseded_at": now,
@@ -259,10 +259,10 @@ class SheetsService:
         log.log_user_updated(entry)
 
     def refresh_user(self, entry):
-        now = parse_time_millis(
+        now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
         )
-        entry = edit_entry_single_field(entry, "last_used_at", now)
+        entry = utils.edit_entry_single_field(entry, "last_used_at", now)
 
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
@@ -284,21 +284,25 @@ class SheetsService:
 
         # check that username hasn't changed
         previous_username = (
-            None if get_value(user, "username") == "" else get_value(user, "username")
+            None
+            if utils.get_value(user, "username") == ""
+            else utils.get_value(user, "username")
         )  # username could be None
         if update.message.from_user.username != previous_username:
             self.supersede_user(user, "username")
             self.add_user(
                 update.message.from_user.id,
                 update.message.from_user.username,
-                get_value(user, "first_name"),
+                utils.get_value(user, "first_name"),
             )
             self.sync_user_data(update)
 
             return log.log_username_updated(update)
 
         # check that firstname hasn't changed
-        if update.message.from_user.first_name != str(get_value(user, "first_name")):
+        if update.message.from_user.first_name != str(
+            utils.get_value(user, "first_name")
+        ):
             self.supersede_user(user, "first_name")
             self.add_user(
                 update.message.from_user.id,
@@ -322,18 +326,5 @@ class SheetsService:
         if len(result) < 1:
             return True
 
-        new_limit = get_value(result, "new_limit")
+        new_limit = utils.get_value(result, "new_limit")
         return current_job_count >= new_limit
-
-
-def edit_entry_single_field(entry, key, value):
-    entry = entry.reset_index(drop=True)
-    entry.at[0, key] = value
-    return entry
-
-
-def edit_entry_multiple_fields(entry, key_value_pairs):
-    entry = entry.reset_index(drop=True)
-    for key in key_value_pairs:
-        entry.at[0, key] = key_value_pairs[key]
-    return entry

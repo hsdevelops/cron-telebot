@@ -32,7 +32,7 @@ def handle_messages(update, context):
         text == replies.request_crontab_message
         or text == replies.invalid_crontab_message
     ):
-        actions.add_crontab(update)
+        actions.add_crontab(update, context)
 
 
 def handle_photos(update, context):

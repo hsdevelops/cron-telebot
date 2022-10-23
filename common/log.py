@@ -78,7 +78,7 @@ def log_option_updated(entry_df, option):
 # sheets
 def log_new_entry(jobname, chat_id):
     logger.info(
-        '[SHEET] Created new job, jobname="%s", chat_id=%s',
+        '[DB] Created new job, jobname="%s", chat_id=%s',
         jobname,
         str(chat_id),
     )
@@ -86,7 +86,7 @@ def log_new_entry(jobname, chat_id):
 
 def log_new_chat(chat_id, chat_title):
     logger.info(
-        "[SHEET] Created new chat entry, chat_id=%s, chat_title=%s",
+        "[DB] Created new chat entry, chat_id=%s, chat_title=%s",
         str(chat_id),
         chat_title,
     )
@@ -94,7 +94,7 @@ def log_new_chat(chat_id, chat_title):
 
 def log_new_user(user_id, username):
     logger.info(
-        '[SHEET] Created new user, user_id=%s, username="%s"',
+        '[DB] Created new user, user_id=%s, username="%s"',
         str(user_id),
         username,
     )
@@ -102,7 +102,7 @@ def log_new_user(user_id, username):
 
 def log_entry_updated(entry):
     logger.info(
-        '[SHEET] Updated job entry "%s", chat_id=%s',
+        '[DB] Updated job entry "%s", chat_id=%s',
         get_value(entry, "jobname"),
         str(get_value(entry, "chat_id")),
     )
@@ -110,7 +110,7 @@ def log_entry_updated(entry):
 
 def log_chat_entry_updated(entry):
     logger.info(
-        '[SHEET] Updated chat restriction to "%s", chat_id=%s',
+        '[DB] Updated chat restriction to "%s", chat_id=%s',
         get_value(entry, "restriction"),
         str(get_value(entry, "chat_id")),
     )
@@ -118,7 +118,7 @@ def log_chat_entry_updated(entry):
 
 def log_user_updated(entry):
     logger.info(
-        '[SHEET] Superseded user, user_id=%s, field_changed="%s"',
+        '[DB] Superseded user, user_id=%s, field_changed="%s"',
         get_value(entry, "user_id"),
         get_value(entry, "field_changed"),
     )
@@ -126,7 +126,7 @@ def log_user_updated(entry):
 
 def log_username_updated(update):
     logger.info(
-        "[SHEET] Superseded username, new username=%s, user_id=%s",
+        "[DB] Superseded username, new username=%s, user_id=%s",
         update.message.from_user.username,
         update.message.from_user.id,
     )
@@ -134,7 +134,7 @@ def log_username_updated(update):
 
 def log_firstname_updated(update):
     logger.info(
-        "[SHEET] Superseded first_name, new first_name=%s, username=%s, user_id=%s",
+        "[DB] Superseded first_name, new first_name=%s, username=%s, user_id=%s",
         update.message.from_user.first_name,
         update.message.from_user.username,
         update.message.from_user.id,
@@ -144,10 +144,10 @@ def log_firstname_updated(update):
 # api
 def log_api_previous_message_deletion(chat_id, message_id, status_code):
     logger.info(
-        '[TELEGRAM API] Deleted previous message, response_status=%s, chat_id=%s, message_id="%s"',
+        "[TELEGRAM API] Deleted previous message, response_status=%s, chat_id=%s, message_id=%s",
+        status_code,
         chat_id,
         message_id,
-        status_code,
     )
 
 

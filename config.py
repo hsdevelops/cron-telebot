@@ -13,7 +13,19 @@ JOB_LIMIT_PER_PERSON = 10
 TELEGRAM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
 BOTHOST = getenv("BOTHOST")  # only required in prod environment
 
-""" GSheets config """
+
+""" DB config """
+DB_TYPE = "mongo"
+
+""" Mongo config (not required if using gsheets) """
+MONGODB_CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING")
+MONGODB_DB = "rm_bot"
+MONGODB_JOB_DATA_COLLECTION = "job_data"
+MONGODB_CHAT_DATA_COLLECTION = "chat_data"
+MONGODB_USER_DATA_COLLECTION = "user_data"
+MONGODB_USER_WHITELIST_COLLECTION = "whitelist"
+
+""" GSheets config (not required if using mongo) """
 # Create the Google Sheet manually. Set all values as plain text format.
 # Remember to share the Google Sheet with SERVICE_ACCOUNT_INFO_CLIENT_EMAIL
 
