@@ -210,7 +210,7 @@ class SheetsService:
                 chat_title,
                 chat_type,
                 tz_offset,
-                utc_tz,
+                "'%s" % utc_tz,
                 created_by,
                 utils.parse_time_millis(telegram_ts),
                 now,

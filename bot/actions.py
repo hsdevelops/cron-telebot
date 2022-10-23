@@ -57,7 +57,7 @@ def add_timezone(update):
         return replies.send_error_message(update)
 
     match_groups = tz_values.groups()
-    utc_tz = "'%s" % match_groups[0]
+    utc_tz = str(match_groups[0])
     sign = match_groups[1]
     hour = int(match_groups[2])
     mins = int(match_groups[3])
