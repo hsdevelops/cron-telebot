@@ -3,3 +3,4 @@ keys.json
 *.pyc
 .env
 .vscode/*
+photo-*

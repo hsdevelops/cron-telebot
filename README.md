@@ -8,12 +8,12 @@ Refer to our [user guide](https://github.com/hsdevelops/rm-bot/wiki/User-Guide) 
 1. [main.py](./main.py) — telegram bot, to add/delete/view the recurring jobs
 2. [api.py](./api.py) — flask app, ping the endpoint to trigger check and send all required messages
 3. [config.py](./config.py) — all the configurations you need to change for the bot
-4. [sheets.py](./common/sheets.py) — handles calls to the gsheet we currently use as our database, and can be easily tweaked to link to other databases like MongoDB.
+4. [mongo.py](./database/mongo.py) — handles interaction with the mongo database
 
 ## Prerequisites
 1. Telegram bot created with [@botfather](https://telegram.me/botfather)
 2. A Google Cloud Service Account ([documentation](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating))
-3. Existing Google Sheet
+3. Existing Google Sheet OR MongoDB. If using Google Sheets,
    * Copy this [Google Sheet template](https://docs.google.com/spreadsheets/d/1FKfdxax5hDHdCZ1K1TTI1G8pO4hES1oloK6ob0Spk-w/edit?usp=sharing)
    * Share the Google Sheet with the `SERVICE_ACCOUNT_INFO_CLIENT_EMAIL` of the Google Cloud Service Account
 

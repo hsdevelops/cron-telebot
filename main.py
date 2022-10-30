@@ -22,10 +22,14 @@ def prepare_dispatcher(dp):
     dp.add_handler(CommandHandler("checkcron", commands.checkcron))
     dp.add_handler(CommandHandler("options", commands.list_options))
     dp.add_handler(CommandHandler("deleteprevious", commands.option_delete_previous))
+    dp.add_handler(CommandHandler("adminsonly", commands.option_restrict_to_admins))
+    dp.add_handler(CommandHandler("creatoronly", commands.option_restrict_to_user))
+    dp.add_handler(CommandHandler("changetz", commands.change_tz))
 
     # on noncommand i.e message
     dp.add_handler(MessageHandler(Filters.text, handlers.handle_messages))
     dp.add_handler(MessageHandler(Filters.photo, handlers.handle_photos))
+    dp.add_handler(MessageHandler(Filters.poll, handlers.handle_polls))
 
     # log all errors
     dp.add_error_handler(error)

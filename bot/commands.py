@@ -1,39 +1,42 @@
-from common.sheets import SheetsService
-from bot import replies
+from database.db import Database
+from bot import replies, actions
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
     """Send a message when the command /start is issued."""
-    sheets_service = SheetsService(update)
+    db_service = Database(update).service
 
     # timezone must be defined in order to create new job
-    if sheets_service.retrieve_tz(update.message.chat.id) is None:
+    if db_service.retrieve_tz(update.message.chat.id) is None:
         return replies.send_start_message(update)
 
     replies.send_simple_prompt_message(update)
 
 
-def help(update, context):
+def help(update, _):
     """Send a message when the command /help is issued."""
     replies.send_help_message(update)
 
 
-def checkcron(update, context):
+def checkcron(update, _):
     """Send a message when the command /checkcron is issued."""
     replies.send_checkcron_message(update)
 
 
 def add(update, context):
     """Send a message when the command /add is issued."""
-    sheets_service = SheetsService(update)
+    db_service = Database(update).service
 
     # timezone must be defined in order to create new job
-    if sheets_service.retrieve_tz(update.message.chat.id) is None:
+    if db_service.retrieve_tz(update.message.chat.id) is None:
         return replies.send_start_message(update)
 
+    if not actions.check_rights(update, context, db_service):
+        return
+
     # person limit
-    if sheets_service.exceed_user_limit(update.message.from_user.id):
+    if db_service.exceed_user_limit(update.message.from_user.id):
         return replies.send_exceed_limit_error_message(update)
 
     replies.send_request_jobname_message(update)
@@ -41,9 +44,11 @@ def add(update, context):
 
 def delete(update, context):
     """Send a message when the command /delete is issued."""
-    sheets_service = SheetsService(update)
-    entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
+    db_service = Database(update).service
+    if not actions.check_rights(update, context, db_service):
+        return
 
+    entries = db_service.get_entries_by_chatid(update.message.chat.id)
     if len(entries) <= 0:
         return replies.send_simple_prompt_message(update)
 
@@ -52,9 +57,11 @@ def delete(update, context):
 
 def list_jobs(update, context):
     """Send a message when the command /list is issued."""
-    sheets_service = SheetsService(update)
-    entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
+    db_service = Database(update).service
+    if not actions.check_rights(update, context, db_service):
+        return
 
+    entries = db_service.get_entries_by_chatid(update.message.chat.id)
     if len(entries) <= 0:
         return replies.send_simple_prompt_message(update)
 
@@ -63,20 +70,65 @@ def list_jobs(update, context):
 
 def list_options(update, context):
     """Send a message when the command /options is issued."""
-    sheets_service = SheetsService(update)
-    entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
+    db_service = Database(update).service
+    if not actions.check_rights(update, context, db_service):
+        return
 
+    entries = db_service.get_entries_by_chatid(update.message.chat.id)
     if len(entries) <= 0:  # there must be at least one job available
         return replies.send_simple_prompt_message(update)
 
-    replies.send_list_options_message(update)
+    is_group = update.message.chat.type in ["group", "supergroup"]
+    replies.send_list_options_message(update, is_group)
 
 
 def option_delete_previous(update, context):
-    sheets_service = SheetsService(update)
-    entries = sheets_service.get_entries_by_chatid(update.message.chat.id)
+    """Send a message when the command /deleteprevious is issued."""
+    db_service = Database(update).service
+    if not actions.check_rights(update, context, db_service):
+        return
 
+    entries = db_service.get_entries_by_chatid(update.message.chat.id)
     if len(entries) <= 0:  # there must be at least one job available
         return replies.send_simple_prompt_message(update)
 
     replies.send_option_delete_previous_message(update, entries)
+
+
+def option_restrict_to_admins(update, context):
+    """Send a message when the command /adminsonly is issued."""
+    if update.message.chat.type not in ["group", "supergroup"]:
+        return
+
+    db_service = Database(update).service
+    if not actions.check_rights(update, context, db_service, True):
+        return
+
+    return actions.restrict_to_admins(update, db_service)
+
+
+def option_restrict_to_user(update, context):
+    """Send a message when the command /creatoronly is issued."""
+
+    if update.message.chat.type not in ["group", "supergroup"]:
+        return
+
+    db_service = Database(update).service
+    if not actions.check_rights(update, context, db_service):
+        return
+
+    return actions.restrict_to_user(update, db_service)
+
+
+def change_tz(update, context):
+    """Send a message when the command /changetz is issued."""
+    db_service = Database(update).service
+
+    # timezone must be defined in order to create new job
+    if db_service.retrieve_tz(update.message.chat.id) is None:
+        return replies.send_start_message(update)
+
+    if not actions.check_rights(update, context, db_service):
+        return
+
+    return replies.send_change_timezone_message(update)
