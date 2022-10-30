@@ -94,9 +94,7 @@ class SheetsService:
         entry = utils.edit_entry_single_field(entry, "last_update_ts", now)
         row_number = entry["gsheet_row_number"]
         entry = entry.drop(columns="gsheet_row_number")
-        self.main_worksheet.update_row(
-            row_number, entry.astype(str).iloc[0].tolist()
-        )  # source of bug
+        self.main_worksheet.update_row(row_number, entry.astype(str).iloc[0].tolist())
         log.log_entry_updated(entry)
 
     def retrieve_specific_entry(self, chat_id, jobname, include_removed=False):
@@ -146,7 +144,7 @@ class SheetsService:
             .reset_index(drop=True)
             .iterrows()
         )
-        return list(filtered_df)
+        return [row for _, row in filtered_df]
 
     def count_entries_by_userid(self, user_id):
         df = self.main_worksheet.get_as_df()
@@ -170,6 +168,25 @@ class SheetsService:
             return None
         return result
 
+    def update_chats_tz_by_type(self, user_id, tz_offset, utc_tz, chat_type):
+        df = self.chat_data_worksheet.get_as_df()
+        df["gsheet_row_number"] = np.arange(df.shape[0]) + 2
+        df["chat_id"] = df["chat_id"].astype("str")
+        filtered_df = (
+            df[(df["created_by"] == user_id) & (df["chat_type"] == chat_type)]
+            .reset_index(drop=True)
+            .iterrows()
+        )
+        for _, chat in filtered_df:
+            entry = utils.edit_entry_multiple_fields(
+                chat.to_frame().T,
+                {
+                    "tz_offset": tz_offset,
+                    "utc_tz": "" if chat_type == "channel" else utc_tz,
+                },
+            )
+            self.update_chat_entry(entry, "tz_offset")
+
     def update_chat_entry(self, entry, updated_field="restriction"):
         now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
@@ -182,7 +199,7 @@ class SheetsService:
         entry = entry.drop(columns="gsheet_row_number")
         self.chat_data_worksheet.update_row(
             row_number, entry.astype(str).iloc[0].tolist()
-        )  # source of bug
+        )
         log.log_chat_entry_updated(entry, updated_field)
 
     def check_chat_exists(self, chat_id):

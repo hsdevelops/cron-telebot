@@ -58,15 +58,19 @@ def add_timezone(update):
         return replies.send_error_message(update)
 
     db_service = Database(update).service
-    db_service.add_chat_data(
-        chat_id=update.message.chat.id,
-        chat_title=update.message.chat.title,
-        chat_type=update.message.chat.type,
-        tz_offset=tz_offset,
-        utc_tz=utc_tz,
-        created_by=update.message.from_user.id,
-        telegram_ts=update.message.date,
-    )
+
+    chat_exists = db_service.check_chat_exists(update.message.chat.id)
+    if not chat_exists:
+        db_service.add_chat_data(
+            chat_id=update.message.chat.id,
+            chat_title=update.message.chat.title,
+            chat_type=update.message.chat.type,
+            tz_offset=tz_offset,
+            utc_tz=utc_tz,
+            created_by=update.message.from_user.id,
+            telegram_ts=update.message.date,
+        )
+
     replies.send_help_message(update)
 
 
@@ -153,7 +157,11 @@ def add_crontab(update, context):
     # arrange next run date and time
     crontab = update.message.text
     user_tz_offset = db_service.retrieve_tz(update.message.chat.id)
-    user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+
+    try:
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+    except Exception:
+        return replies.send_invalid_crontab_message(update)
 
     # update db entry
     updated_entry = utils.edit_entry_multiple_fields(
@@ -423,6 +431,10 @@ def check_rights(update, context, db_service, must_be_admin=False):
 
 
 def update_timezone(update, context):
+    db_service = Database(update).service
+    if not check_rights(update, context, db_service):
+        return
+
     # check validity
     tz_values = utils.extract_tz_values(update.message.text)
     if not tz_values:
@@ -431,10 +443,6 @@ def update_timezone(update, context):
     utc_tz, tz_offset = utils.calc_tz(tz_values)
     if tz_offset < -12 or tz_offset > 14:
         return replies.send_error_message(update)
-
-    db_service = Database(update).service
-    if not check_rights(update, context, db_service):
-        return
 
     # retrieve current chat data
     chat_entry = db_service.get_chat_entry(update.message.chat.id)
@@ -451,9 +459,16 @@ def update_timezone(update, context):
     )
     db_service.update_chat_entry(chat_entry, "utc_tz")
 
+    if utils.get_value(chat_entry, "chat_type") == "private":
+        db_service.update_chats_tz_by_type(
+            update.message.from_user.id, tz_offset, utc_tz, "channel"
+        )
+
     # update job entries
     job_entries = db_service.get_entries_by_chatid(update.message.chat.id)
     for job_entry in job_entries:
+        if utils.get_value(job_entry, "nextrun_ts") == "":
+            continue
         crontab = utils.get_value(job_entry, "crontab")
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, tz_offset)
 

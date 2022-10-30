@@ -117,6 +117,16 @@ def log_chat_entry_updated(entry, updated_field):
     )
 
 
+def log_chats_tz_updated_by_type(count, user_id, chat_type, tz_offset):
+    logger.info(
+        "[DB] Bulk updated timezone for %d chats, chat_type=%s, user_id=%s, new tz_offset=%d",
+        count,
+        chat_type,
+        user_id,
+        tz_offset,
+    )
+
+
 def log_user_updated(entry):
     logger.info(
         '[DB] Superseded user, user_id=%s, field_changed="%s"',

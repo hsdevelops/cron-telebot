@@ -132,6 +132,24 @@ class MongoService:
     def get_chat_entry(self, chat_id):
         return self.chat_data_collection.find_one({"chat_id": float(chat_id)})
 
+    def update_chats_tz_by_type(self, user_id, tz_offset, utc_tz, chat_type):
+        now = utils.parse_time_millis(
+            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+        )
+        mongo_response = self.chat_data_collection.update_many(
+            {"created_by": user_id, "chat_type": chat_type},
+            {
+                "$set": {
+                    "tz_offset": tz_offset,
+                    "utc_tz": "" if chat_type == "channel" else utc_tz,
+                    "updated_ts": now,
+                }
+            },
+        )
+        log.log_chats_tz_updated_by_type(
+            mongo_response.modified_count, user_id, chat_type, tz_offset
+        )
+
     def update_chat_entry(self, entry, updated_field="restriction"):
         now = utils.parse_time_millis(
             datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
