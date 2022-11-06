@@ -232,7 +232,7 @@ class MongoService:
         )
 
         self.user_data_collection.replace_one(
-            {"user_id": utils.get_value(entry, "user_id")},
+            {"_id": utils.get_value(entry, "_id")},
             entry,
         )
 
