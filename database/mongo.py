@@ -304,15 +304,12 @@ class MongoService:
     def exceed_user_limit(self, user_id):
         current_job_count = self.count_entries_by_userid(user_id)
 
-        if current_job_count < config.JOB_LIMIT_PER_PERSON:
-            return False
-
         result = self.user_whitelist_collection.find_one(
             {"user_id": float(user_id), "removed_ts": ""}
         )
 
         if result is None:
-            return True
+            return current_job_count >= config.JOB_LIMIT_PER_PERSON
 
         new_limit = utils.get_value(result, "new_limit")
         return current_job_count >= new_limit
