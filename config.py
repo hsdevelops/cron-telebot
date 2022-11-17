@@ -15,7 +15,7 @@ BOTHOST = getenv("BOTHOST")  # only required in prod environment
 
 
 """ DB config """
-DB_TYPE = "mongo"
+DB_TYPE = "mongo"  # ("mongo" for mongo and "gsheet" for gsheet)
 
 """ Mongo config (not required if using gsheets) """
 MONGODB_CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING")

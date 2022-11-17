@@ -39,7 +39,7 @@ def get_value(entry, key):
     if entry is None:
         return None
     if config.DB_TYPE == "mongo":
-        return entry.get(key)
+        return entry.get(key, "")
     return entry.iloc[0][key]
 
 

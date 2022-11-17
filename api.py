@@ -4,7 +4,7 @@ import requests
 from common import log, utils
 from database.db import Database
 from flask import Flask, Response
-from config import TELEGRAM_BOT_TOKEN, TZ_OFFSET, DB_TYPE
+from config import TELEGRAM_BOT_TOKEN, TZ_OFFSET
 from datetime import datetime, timedelta, timezone
 
 
@@ -13,8 +13,6 @@ app = Flask(__name__)
 
 @app.route("/api", methods=["GET", "POST"])
 def run():
-    # TODO - allow only POST
-    # TODO - add authentication
     db_service = Database().service
     now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
     parsed_time = utils.parse_time_mins(now)
@@ -30,21 +28,24 @@ def run():
     count = 0
     for row in entries:
         chat_id = (
-            row.get("channel_id")
-            if row.get("channel_id", "") != ""
-            else row.get("chat_id")
+            utils.get_value(row, "channel_id")
+            if utils.get_value(row, "channel_id") != ""
+            else utils.get_value(row, "chat_id")
         )
-        content = row.get("content")
-        content_type = row.get("content_type")
-        photo_id = row.get("photo_id")
-        photo_group_id = str(row.get("photo_group_id", ""))
-        crontab = row.get("crontab")
-        previous_message_id = str(row.get("previous_message_id", ""))
+        content = utils.get_value(row, "content")
+        content_type = utils.get_value(row, "content_type")
+        photo_id = utils.get_value(row, "photo_id")
+        photo_group_id = str(utils.get_value(row, "photo_group_id"))
+        crontab = utils.get_value(row, "crontab")
+        previous_message_id = str(utils.get_value(row, "previous_message_id"))
 
         bot_message_id, err = send_message(
             chat_id, content, content_type, photo_id, photo_group_id
         )
-        if row.get("option_delete_previous", "") != "" and previous_message_id != "":
+        if (
+            utils.get_value(row, "option_delete_previous") != ""
+            and previous_message_id != ""
+        ):
             delete_message(chat_id, previous_message_id)
 
         # calculate and update next run time
@@ -52,7 +53,7 @@ def run():
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
 
         updated_entry = utils.edit_entry_multiple_fields(
-            row if DB_TYPE == "mongo" else row.to_frame().T,  # TODO
+            row,
             {
                 "nextrun_ts": db_nextrun_ts,
                 "user_nextrun_ts": user_nextrun_ts,

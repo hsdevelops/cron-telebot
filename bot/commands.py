@@ -36,8 +36,9 @@ def add(update, context):
         return
 
     # person limit
-    if db_service.exceed_user_limit(update.message.from_user.id):
-        return replies.send_exceed_limit_error_message(update)
+    exceed_limit, user_limit = db_service.exceed_user_limit(update.message.from_user.id)
+    if exceed_limit:
+        return replies.send_exceed_limit_error_message(update, user_limit)
 
     replies.send_request_jobname_message(update)
 

@@ -133,7 +133,7 @@ class SheetsService:
         filtered_df = df[
             (df["nextrun_ts"] <= ts) & (df["removed_ts"] == "") & (df["crontab"] != "")
         ].iterrows()
-        return [row for _, row in filtered_df]
+        return [row.to_frame().T for _, row in filtered_df]
 
     def get_entries_by_chatid(self, chat_id):
         df = self.main_worksheet.get_as_df()
@@ -144,7 +144,7 @@ class SheetsService:
             .reset_index(drop=True)
             .iterrows()
         )
-        return [row for _, row in filtered_df]
+        return [row.to_frame().T for _, row in filtered_df]
 
     def count_entries_by_userid(self, user_id):
         df = self.main_worksheet.get_as_df()
@@ -332,14 +332,14 @@ class SheetsService:
     def exceed_user_limit(self, user_id):
         current_job_count = self.count_entries_by_userid(user_id)
 
-        if current_job_count < config.JOB_LIMIT_PER_PERSON:
-            return False
-
         df = self.user_whitelist_worksheet.get_as_df()
         result = df[(df["user_id"] == user_id) & (df["removed_ts"] == "")]
 
         if len(result) < 1:
-            return True
+            return (
+                current_job_count >= config.JOB_LIMIT_PER_PERSON,
+                config.JOB_LIMIT_PER_PERSON,
+            )
 
         new_limit = utils.get_value(result, "new_limit")
-        return current_job_count >= new_limit
+        return (current_job_count >= new_limit, config.JOB_LIMIT_PER_PERSON)

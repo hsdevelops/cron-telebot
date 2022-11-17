@@ -31,8 +31,8 @@ list_options_message_group = "<b>Group options</b>\n/adminsonly - restrict bot t
 list_options_message = "__additional_commands__<b>Job options</b>\n/deleteprevious - delete the previous message when the next message is sent. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"  # html
 option_delete_previous_message = "Tell me the name of the job you want to toggle the /deleteprevious option for. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
 exceed_limit_error_message = (
-    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\nIf you need to create more than %d jobs, please contact the bot owner at hs.develops.1@gmail.com specifying:\n1. the number of jobs you need, and\n2. your Telegram handle.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"
-    % (JOB_LIMIT_PER_PERSON, JOB_LIMIT_PER_PERSON)
+    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\n__custom_message__If you need to create more than __limit__ jobs, please contact the bot owner at hs.develops.1@gmail.com specifying:\n1. the number of jobs you need, and\n2. your Telegram handle.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"
+    % (JOB_LIMIT_PER_PERSON)
 )  # html
 channels_only_error_message = "Job creation by forwarded messages is only enabled for channels. Please run the /add command in your __chat_type__ chat."
 add_to_channel_message = "\n\nRemember to add RM bot into the channel as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>."
@@ -79,9 +79,22 @@ def send_checkcron_message(update):
     )
 
 
-def send_exceed_limit_error_message(update):
+def send_exceed_limit_error_message(update, limit):
+    reply_text = exceed_limit_error_message.replace("__limit__", str(limit))
+    if limit == JOB_LIMIT_PER_PERSON:
+        reply_text = reply_text.replace("__custom_message__", "")
+    elif limit < JOB_LIMIT_PER_PERSON:
+        reply_text = reply_text.replace(
+            "__custom_message__",
+            "However, we have received reports of spam from you and as a result you have been blacklisted.\n\n",
+        )
+    else:
+        reply_text = reply_text.replace(
+            "__custom_message__",
+            "As per prior request we have increased your limit to %d.\n\n" % limit,
+        )
     update.message.reply_text(
-        text=exceed_limit_error_message,
+        text=reply_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
@@ -159,14 +172,6 @@ def send_job_details(update, entry_df):
 
 def send_error_message(update):
     update.message.reply_text(error_message)
-
-
-def send_exceed_limit_error_message(update):
-    update.message.reply_text(
-        text=exceed_limit_error_message,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
-    )
 
 
 def send_invalid_new_job_message(update):

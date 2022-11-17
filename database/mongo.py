@@ -1,8 +1,6 @@
-# TODO - clean db (if created > 1 month before, some fields are empty)
-
 import config
 from common import log, utils
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING, DESCENDING
 from datetime import datetime, timedelta, timezone
 
 # define service
@@ -65,7 +63,7 @@ class MongoService:
         result = list(
             self.main_collection.find(
                 {"chat_id": float(chat_id), "removed_ts": ""}
-            ).sort([("created_ts", -1)])
+            ).sort([("created_ts", DESCENDING)])
         )
         if len(result) <= 0:
             return None
@@ -102,7 +100,7 @@ class MongoService:
         return list(
             self.main_collection.find(
                 {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
-            )
+            ).sort([("created_at", ASCENDING)])
         )
 
     def get_entries_by_chatid(self, chat_id):
@@ -248,7 +246,7 @@ class MongoService:
             self.user_data_collection.find(
                 {"user_id": float(utils.get_value(entry, "user_id"))}
             )
-            .sort([("created_at", -1)])
+            .sort([("created_at", DESCENDING)])
             .limit(1)
             .next()
         )
@@ -309,7 +307,10 @@ class MongoService:
         )
 
         if result is None:
-            return current_job_count >= config.JOB_LIMIT_PER_PERSON
+            return (
+                current_job_count >= config.JOB_LIMIT_PER_PERSON,
+                config.JOB_LIMIT_PER_PERSON,
+            )
 
         new_limit = utils.get_value(result, "new_limit")
-        return current_job_count >= new_limit
+        return (current_job_count >= new_limit, new_limit)

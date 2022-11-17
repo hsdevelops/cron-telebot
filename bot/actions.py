@@ -32,8 +32,9 @@ def add_new_job(update, context):
         return replies.send_start_message(update)
 
     # person limit
-    if db_service.exceed_user_limit(update.message.from_user.id):
-        return replies.send_exceed_limit_error_message(update)
+    exceed_limit, user_limit = db_service.exceed_user_limit(update.message.from_user.id)
+    if exceed_limit:
+        return replies.send_exceed_limit_error_message(update, user_limit)
 
     # check name does not already exist
     if db_service.check_exists(update.message.chat.id, update.message.text):
@@ -302,8 +303,9 @@ def add_new_channel_job(update, poll=False):
         return db_service.update_entry(updated_entry)
 
     # new job to be created, assert job limit
-    if db_service.exceed_user_limit(update.message.from_user.id):
-        return replies.send_exceed_limit_error_message(update)
+    exceed_limit, user_limit = db_service.exceed_user_limit(update.message.from_user.id)
+    if exceed_limit:
+        return replies.send_exceed_limit_error_message(update, user_limit)
 
     # add new job
     content = update.message.caption
@@ -473,7 +475,7 @@ def update_timezone(update, context):
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, tz_offset)
 
         updated_entry = utils.edit_entry_multiple_fields(
-            job_entry if DB_TYPE == "mongo" else job_entry.to_frame().T,  # TODO
+            job_entry,
             {
                 "nextrun_ts": db_nextrun_ts,
                 "user_nextrun_ts": user_nextrun_ts,
