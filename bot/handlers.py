@@ -58,9 +58,12 @@ def handle_polls(update, context):
 
     # job creation for channels
     is_channel_job = update.message.forward_from_chat is not None
-    if is_channel_job and update.message.poll.type == "quiz":
-        return replies.send_channel_quiz_unavailable_message(update)
-    elif is_channel_job:
+    if update.message.poll.type == "quiz" and (
+        update.message.chat.type != "private" or is_channel_job
+    ):
+        return replies.send_quiz_unavailable_message(update)
+
+    if is_channel_job:
         return actions.add_new_channel_job(update=update, poll=True)
 
     reply_to_message = update.message.reply_to_message

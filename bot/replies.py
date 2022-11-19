@@ -6,8 +6,8 @@ from common.utils import get_value
 
 
 # custom messages
-start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"  # html
-help_message = "I can help you schedule recurring messages using <a href='https://crontab.guru/'>cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/list - list created jobs\n/delete - delete a job\n/options - view advanced job options\n/checkcron - check the validity/meaning of a cron expression\n/changetz - update timezone\n\n<b>Feeling lost?</b>\nRefer to our <a href='https://github.com/hsdevelops/rm-bot/wiki/User-Guide'>user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at hs.develops.1@gmail.com.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"  # html
+start_message = "<strong>Thank you for using Recurring Messages!</strong>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"  # html
+help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<strong>Available commands</strong>\n/add - add a new job\n/list - list created jobs\n/delete - delete a job\n/options - view advanced job options\n/checkcron - check the validity/meaning of a cron expression\n/changetz - update timezone\n\n<strong>Feeling lost?</strong>\nRefer to our <a href="https://github.com/hsdevelops/rm-bot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<strong>Found a bug?</strong>\nPlease contact the bot owner at <a href="mailto:hs.develops.1@gmail.com">hs.develops.1@gmail.com</a>.\n\n<strong>Enjoying the bot?</strong>\nYou can <a href="https://www.buymeacoffee.com/rmteam">buy the RM team a coffee</a>!'  # html
 delete_message = "Hey, tell me the name of the job you want to delete. Get /list of available jobs.\n\n(swipe left to reply to this message)"
 request_jobname_message = (
     "Give me your job name\n\n(swipe left to reply to this message)"
@@ -27,11 +27,11 @@ error_message = "You know that's not right..."
 checkcron_message = "Hey, send me your cron expression, I will decrypt it for you.\n\n(swipe left to reply to this message)"
 checkcron_invalid_message = "Alright, that is not a valid cron. Click <a href='https://crontab.guru/'>here</a> if you need help."  # html
 checkcron_meaning_message = "Ok, that means: "
-list_options_message_group = "<b>Group options</b>\n/adminsonly - restrict bot to group admins\n/creatoronly - restrict bot to first user\n\n"
-list_options_message = "__additional_commands__<b>Job options</b>\n/deleteprevious - delete the previous message when the next message is sent. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"  # html
+list_options_message_group = "<strong>Group options</strong>\n/adminsonly - restrict bot to group admins\n/creatoronly - restrict bot to first user\n\n"
+list_options_message = "__additional_commands__<strong>Job options</strong>\n/deleteprevious - delete the previous message when the next message is sent. Disabled by default. Note that this option is subject to the limitations mentioned in the <a href='https://core.telegram.org/bots/api#deletemessage'>Telegram API documentation</a>.\n\nTo request for a new feature, please contact the bot owner at hs.develops.1@gmail.com.\n\n<strong>Enjoying the bot?</strong>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"  # html
 option_delete_previous_message = "Tell me the name of the job you want to toggle the /deleteprevious option for. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
 exceed_limit_error_message = (
-    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\n__custom_message__If you need to create more than __limit__ jobs, please contact the bot owner at hs.develops.1@gmail.com specifying:\n1. the number of jobs you need, and\n2. your Telegram handle.\n\n<b>Enjoying the bot?</b>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"
+    "Recurring Messages currently only supports %d jobs per person, in an effort to reduce spam.\n\n__custom_message__If you need to create more than __limit__ jobs, please contact the bot owner at hs.develops.1@gmail.com specifying:\n1. the number of jobs you need, and\n2. your Telegram handle.\n\n<strong>Enjoying the bot?</strong>\nYou can <a href='https://www.buymeacoffee.com/rmteam'>buy the RM team a coffee</a>!"
     % (JOB_LIMIT_PER_PERSON)
 )  # html
 channels_only_error_message = "Job creation by forwarded messages is only enabled for channels. Please run the /add command in your __chat_type__ chat."
@@ -41,7 +41,7 @@ restrict_success_message = "Hurray! From now on __bot_ic__ can set up recurring 
 wrong_restrction_error_message = (
     "Restriction is already set. Please ask __bot_ic__ to unset bot restriction first."
 )
-channel_quiz_unavailable_message = 'Recurring messages unfortunately cannot support recurring quizzes in channels... because Telegram does not return the correct option id for forwarded messages (◕︵◕) (<a href="https://docs.python-telegram-bot.org/en/v12.5.1/telegram.poll.html#telegram.Poll.correct_option_id">see docs</a>)'
+quiz_unavailable_message = 'Recurring messages unfortunately cannot support recurring quizzes in channels and groups... because Telegram does not return the correct option id for forwarded messages (◕︵◕) (<a href="https://docs.python-telegram-bot.org/en/v12.5.1/telegram.poll.html#telegram.Poll.correct_option_id">see docs</a>)'
 change_timezone_message = "Please tell me your new UTC timezone.\n\nNote that this will change the timezone for all jobs set up in this chat.\n\n(swipe left to reply to this message)"
 timezone_nochange_error_message = "Whut? That's the same timezone!"
 timezone_change_success_message = (
@@ -154,7 +154,7 @@ def send_job_details(update, entry_df):
     if content_type == "poll":
         content = "(Poll) %s" % json.loads(content).get("question")
 
-    reply_text = "<b>Job name</b>: {}\n<b>Cron</b>: {}\n<b>Content</b>: {}\n<b>Photos</b>: {}\n<b>Category</b>: {}\n<b>Next run</b>: {}\n\n<b>Advanced options</b>\n/deleteprevious: {}".format(
+    reply_text = "<strong>Job name</strong>: {}\n<strong>Cron</strong>: {}\n<strong>Content</strong>: {}\n<strong>Photos</strong>: {}\n<strong>Category</strong>: {}\n<strong>Next run</strong>: {}\n\n<strong>Advanced options</strong>\n/deleteprevious: {}".format(
         get_value(entry_df, "jobname"),
         get_value(entry_df, "crontab"),
         content,
@@ -278,9 +278,9 @@ def send_restrict_success_message(update, bot_ic):
     update.message.reply_text(restrict_success_message.replace("__bot_ic__", bot_ic))
 
 
-def send_channel_quiz_unavailable_message(update):
+def send_quiz_unavailable_message(update):
     update.message.reply_text(
-        text=channel_quiz_unavailable_message,
+        text=quiz_unavailable_message,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
