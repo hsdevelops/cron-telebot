@@ -24,6 +24,11 @@ def extract_tz_values(text):
     )
 
 
+def extract_jobs(text):
+    rx_seq = r"((?:\*|[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]|\*\/[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]) (?:\*|[0-9]|1[0-9]|2[0-3]|\*\/[0-9]|1[0-9]|2[0-3]) (?:\*|[1-9]|1[0-9]|2[0-9]|3[0-1]|\*\/[1-9]|1[0-9]|2[0-9]|3[0-1]) (?:\*|[1-9]|1[0-2]|\*\/[1-9]|1[0-2]) (?:\*|[0-6]|\*\/[0-6])) (.*)(?:\n)?"
+    return re.findall(rx_seq, text)
+
+
 def calc_tz(tz_values):
     match_groups = tz_values.groups()
     utc_tz = str(match_groups[0])
@@ -35,37 +40,13 @@ def calc_tz(tz_values):
     return (utc_tz, tz_offset)
 
 
-def get_value(entry, key):
-    if entry is None:
-        return None
-    if config.DB_TYPE == "mongo":
-        return entry.get(key, "")
-    return entry.iloc[0][key]
-
-
-def edit_entry_single_field(entry, key, value):
-    if config.DB_TYPE == "mongo":
-        entry[key] = value
-        return entry
-    entry = entry.reset_index(drop=True)
-    entry.at[0, key] = value
-    return entry
-
-
-def edit_entry_multiple_fields(entry, key_value_pairs):
-    if config.DB_TYPE == "mongo":
-        for key in key_value_pairs:
-            entry[key] = key_value_pairs[key]
-        return entry
-    entry = entry.reset_index(drop=True)
-    for key in key_value_pairs:
-        entry.at[0, key] = key_value_pairs[key]
-    return entry
-
-
 def parse_time_mins(datetime_obj):
     return datetime_obj.strftime("%Y-%m-%d %H:%M")
 
 
 def parse_time_millis(datetime_obj):
     return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+def now():
+    return parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))

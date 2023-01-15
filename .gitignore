@@ -1,8 +1,11 @@
 .DS_Store
 venv/
+tests/
 tmp/
+
 bot.session
 keys.json
+
 *.pyc
-.env
 photo-*
+.*

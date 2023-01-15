@@ -2,8 +2,9 @@ import gc
 import json
 import requests
 from common import log, utils
-from database.db import Database
+from database import mongo
 from flask import Flask, Response
+from urllib.parse import urlencode
 from config import TELEGRAM_BOT_TOKEN, TZ_OFFSET
 from datetime import datetime, timedelta, timezone
 
@@ -13,7 +14,7 @@ app = Flask(__name__)
 
 @app.route("/api", methods=["GET", "POST"])
 def run():
-    db_service = Database().service
+    db_service = mongo.MongoService()
     now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
     parsed_time = utils.parse_time_mins(now)
     entries = db_service.get_entries_by_nextrun(parsed_time)
@@ -27,33 +28,33 @@ def run():
 
     count = 0
     for row in entries:
-        chat_id = (
-            utils.get_value(row, "channel_id")
-            if utils.get_value(row, "channel_id") != ""
-            else utils.get_value(row, "chat_id")
-        )
-        content = utils.get_value(row, "content")
-        content_type = utils.get_value(row, "content_type")
-        photo_id = utils.get_value(row, "photo_id")
-        photo_group_id = str(utils.get_value(row, "photo_group_id"))
-        crontab = utils.get_value(row, "crontab")
-        previous_message_id = str(utils.get_value(row, "previous_message_id"))
+        channel_id = row.get("channel_id", "")
+        chat_id = row.get("chat_id", "")
+        if channel_id != "":
+            chat_id = channel_id
+        content = row.get("content", "")
+        content_type = row.get("content_type", "")
+        photo_id = row.get("photo_id", "")
+        photo_group_id = str(row.get("photo_group_id", ""))
+        crontab = row.get("crontab", "")
+        previous_message_id = str(row.get("previous_message_id", ""))
 
         bot_message_id, err = send_message(
             chat_id, content, content_type, photo_id, photo_group_id
         )
-        if (
-            utils.get_value(row, "option_delete_previous") != ""
-            and previous_message_id != ""
-        ):
+        if row.get("option_delete_previous", "") != "" and previous_message_id != "":
             delete_message(chat_id, previous_message_id)
 
         # calculate and update next run time
         user_tz_offset = db_service.retrieve_tz(chat_id)
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
 
-        updated_entry = utils.edit_entry_multiple_fields(
-            row,
+        db_service.update_entry(
+            {
+                "created_ts": row.get("created_ts", ""),
+                "chat_id": row.get("chat_id", ""),
+                "jobname": row.get("jobname", ""),
+            },
             {
                 "nextrun_ts": db_nextrun_ts,
                 "user_nextrun_ts": user_nextrun_ts,
@@ -62,7 +63,6 @@ def run():
                 "removed_ts": "" if err is None else parsed_time,
             },
         )
-        db_service.update_entry(updated_entry)
         count = count + 1
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
@@ -103,15 +103,23 @@ def prepare_photos(photo_id, content):
 def send_message(chat_id, content, content_type, photo_id, photo_group_id):
     if photo_group_id != "":  # media group
         media, files = prepare_photos(photo_id, content)
+        query_string = urlencode({"chat_id": chat_id, "media": media})
         telebot_api_endpoint = (
-            "https://api.telegram.org/bot{}/sendMediaGroup?chat_id={}&media={}".format(
-                TELEGRAM_BOT_TOKEN, chat_id, media
+            "https://api.telegram.org/bot{}/sendMediaGroup?{}".format(
+                TELEGRAM_BOT_TOKEN, query_string
             )
         )
         response = requests.post(telebot_api_endpoint, files=files)
     elif photo_id != "":  # single photo
-        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendPhoto?chat_id={}&photo={}&caption={}&parse_mode=html".format(
-            TELEGRAM_BOT_TOKEN, chat_id, photo_id, content
+        query = {
+            "chat_id": chat_id,
+            "photo": photo_id,
+            "caption": content,
+            "parse_mode": "html",
+        }
+        query_string = urlencode(query)
+        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendPhoto?{}".format(
+            TELEGRAM_BOT_TOKEN, query_string
         )
         response = requests.get(telebot_api_endpoint)
     elif content_type == "poll":
@@ -136,8 +144,10 @@ def send_message(chat_id, content, content_type, photo_id, photo_group_id):
         }
         response = requests.get(telebot_api_endpoint, data=parameters)
     else:  # text message
-        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}&parse_mode=html".format(
-            TELEGRAM_BOT_TOKEN, chat_id, content
+        query = {"chat_id": chat_id, "text": content, "parse_mode": "html"}
+        query_string = urlencode(query)
+        telebot_api_endpoint = "https://api.telegram.org/bot{}/sendMessage?{}".format(
+            TELEGRAM_BOT_TOKEN, query_string
         )
         response = requests.get(telebot_api_endpoint)
 

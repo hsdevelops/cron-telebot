@@ -30,10 +30,10 @@ class MongoService:
         content_type="",
         photo_id="",
         photo_group_id="",
+        nextrun_ts="",
+        user_nextrun_ts="",
     ):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
+        now = utils.now()
         self.main_collection.insert_one(
             {
                 "created_ts": now,
@@ -50,8 +50,8 @@ class MongoService:
                 "photo_group_id": photo_group_id,
                 "previous_message_id": "",
                 "option_delete_previous": "",
-                "nextrun_ts": "",
-                "user_nextrun_ts": "",
+                "nextrun_ts": nextrun_ts,
+                "user_nextrun_ts": user_nextrun_ts,
                 "removed_ts": "",
                 "remarks": "",
             }
@@ -69,32 +69,29 @@ class MongoService:
             return None
         return result[0]
 
-    def update_entry(self, entry):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
-        entry = utils.edit_entry_single_field(entry, "last_update_ts", now)
+    def update_multiple_entries(self, filter, update):
+        filter["removed_ts"] = ""
+        update["last_update_ts"] = utils.now()
+        return self.main_collection.update_many(filter, {"$set": update})
 
-        self.main_collection.replace_one(
-            {
-                "created_ts": utils.get_value(entry, "created_ts"),
-                "chat_id": utils.get_value(entry, "chat_id"),
-                "jobname": utils.get_value(entry, "jobname"),
-            },
-            entry,
-            upsert=True,
+    def remove_entries_by_chat(self, chat_id):
+        self.update_multiple_entries(
+            {"chat_id": float(chat_id)}, {"removed_ts": utils.now()}
         )
 
-        log.log_entry_updated(entry)
+    def update_entry(self, filter, update):
+        filter["removed_ts"] = ""
+        update["last_update_ts"] = utils.now()
+        return self.main_collection.update_one(filter, {"$set": update})
 
-    def retrieve_specific_entry(self, chat_id, jobname, include_removed=False):
+    def get_one_entry(self, chat_id, jobname, include_removed=False):
         filter = {"chat_id": float(chat_id), "jobname": jobname}
         if not include_removed:
             filter["removed_ts"] = ""
         return self.main_collection.find_one(filter)
 
     def check_exists(self, chat_id, jobname):
-        return self.retrieve_specific_entry(chat_id, jobname) is not None
+        return self.get_one_entry(chat_id, jobname) is not None
 
     def get_entries_by_nextrun(self, ts):
         return list(
@@ -104,61 +101,45 @@ class MongoService:
         )
 
     def get_entries_by_chatid(self, chat_id):
-        return list(
-            self.main_collection.find(
-                {
-                    "chat_id": float(chat_id),
-                    "removed_ts": "",
-                }
-            )
-        )
+        q = {
+            "chat_id": float(chat_id),
+            "removed_ts": "",
+        }
+        return list(self.main_collection.find(q))
 
     def count_entries_by_userid(self, user_id):
-        return self.main_collection.count_documents(
-            {
-                "created_by": user_id,
-                "removed_ts": "",
-            }
-        )
+        q = {
+            "created_by": user_id,
+            "removed_ts": "",
+        }
+        return self.main_collection.count_documents(q)
 
     def retrieve_tz(self, chat_id):
         entry = self.get_chat_entry(chat_id)
         if entry is None:
             return None
-        return float(utils.get_value(entry, "tz_offset"))
+        return float(entry.get("tz_offset", ""))
 
     def get_chat_entry(self, chat_id):
         return self.chat_data_collection.find_one({"chat_id": float(chat_id)})
 
     def update_chats_tz_by_type(self, user_id, tz_offset, utc_tz, chat_type):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
+        update = {
+            "tz_offset": tz_offset,
+            "utc_tz": "" if chat_type == "channel" else utc_tz,
+            "updated_ts": utils.now(),
+        }
         mongo_response = self.chat_data_collection.update_many(
             {"created_by": user_id, "chat_type": chat_type},
-            {
-                "$set": {
-                    "tz_offset": tz_offset,
-                    "utc_tz": "" if chat_type == "channel" else utc_tz,
-                    "updated_ts": now,
-                }
-            },
+            {"$set": update},
         )
-        log.log_chats_tz_updated_by_type(
-            mongo_response.modified_count, user_id, chat_type, tz_offset
-        )
+        modified_count = mongo_response.modified_count
+        log.log_chats_tz_updated_by_type(modified_count, user_id, chat_type, tz_offset)
 
-    def update_chat_entry(self, entry, updated_field="restriction"):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
-        entry = utils.edit_entry_single_field(entry, "updated_ts", now)
-
-        self.chat_data_collection.replace_one(
-            {"chat_id": utils.get_value(entry, "chat_id")}, entry
-        )
-
-        log.log_chat_entry_updated(entry, updated_field)
+    def update_chat_entry(self, chat_id, update, updated_field="restriction"):
+        q = {"chat_id": chat_id}
+        self.chat_data_collection.update_one(q, {"$set": update})
+        log.log_chat_entry_updated(chat_id, updated_field, update[updated_field])
 
     def check_chat_exists(self, chat_id):
         return self.get_chat_entry(chat_id) is not None
@@ -173,90 +154,58 @@ class MongoService:
         created_by,
         telegram_ts,
     ):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
-        self.chat_data_collection.insert_one(
-            {
-                "chat_id": chat_id,
-                "chat_title": chat_title,
-                "chat_type": chat_type,
-                "tz_offset": tz_offset,
-                "utc_tz": utc_tz,
-                "created_by": created_by,
-                "telegram_ts": utils.parse_time_millis(telegram_ts),
-                "updated_ts": now,
-                "restriction": "",
-            }
-        )
-
+        new_doc = {
+            "chat_id": chat_id,
+            "chat_title": chat_title,
+            "chat_type": chat_type,
+            "tz_offset": tz_offset,
+            "utc_tz": utc_tz,
+            "created_by": created_by,
+            "telegram_ts": utils.parse_time_millis(telegram_ts),
+            "updated_ts": utils.now(),
+            "restriction": "",
+        }
+        self.chat_data_collection.insert_one(new_doc)
         log.log_new_chat(chat_id, chat_title)
 
     def add_user(self, user_id, username, first_name):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
-        self.user_data_collection.insert_one(
-            {
-                "user_id": user_id,
-                "username": username,
-                "first_name": first_name,
-                "created_at": now,
-                "last_used_at": now,
-                "superseded_at": "",
-                "field_changed": "",
-            }
-        )
-
+        now = utils.now()
+        new_doc = {
+            "user_id": user_id,
+            "username": username,
+            "first_name": first_name,
+            "created_at": now,
+            "last_used_at": now,
+            "superseded_at": "",
+            "field_changed": "",
+        }
+        self.user_data_collection.insert_one(new_doc)
         log.log_new_user(user_id, username)
 
     def retrieve_user_data(self, user_id):
-        result = self.user_data_collection.find_one(
-            {"user_id": float(user_id), "superseded_at": ""}
-        )
+        q = {"user_id": float(user_id), "superseded_at": ""}
+        result = self.user_data_collection.find_one(q)
         return result
 
     def supersede_user(self, entry, field_changed):
         # update previous entry
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
-        entry = utils.edit_entry_multiple_fields(
-            entry,
-            {
-                "superseded_at": now,
-                "field_changed": field_changed,
-            },
-        )
-
-        self.user_data_collection.replace_one(
-            {"_id": utils.get_value(entry, "_id")},
-            entry,
-        )
-
+        update = {"superseded_at": utils.now(), "field_changed": field_changed}
+        self.user_data_collection.update_one({"_id": entry[""]}, {"$set": update})
         log.log_user_updated(entry)
 
     def refresh_user(self, entry):
-        now = utils.parse_time_millis(
-            datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
-        )
-        entry = utils.edit_entry_single_field(entry, "last_used_at", now)
-
+        entry["last_used_at"] = utils.now()
         obj = (
-            self.user_data_collection.find(
-                {"user_id": float(utils.get_value(entry, "user_id"))}
-            )
+            self.user_data_collection.find({"user_id": float(entry.get("user_id", ""))})
             .sort([("created_at", DESCENDING)])
             .limit(1)
             .next()
         )
-
-        self.user_data_collection.replace_one(
-            {"_id": obj["_id"]},
-            entry,
-        )
+        self.user_data_collection.replace_one({"_id": obj["_id"]}, entry)
 
     def sync_user_data(self, update):
+        if update.message is None:
+            return
         user = self.retrieve_user_data(update.message.from_user.id)
 
         if user is None:
@@ -269,25 +218,21 @@ class MongoService:
 
         # check that username hasn't changed
         previous_username = (
-            None
-            if utils.get_value(user, "username") == ""
-            else utils.get_value(user, "username")
+            None if user.get("username", "") == "" else user.get("username", "")
         )  # username could be None
         if update.message.from_user.username != previous_username:
             self.supersede_user(user, "username")
             self.add_user(
                 update.message.from_user.id,
                 update.message.from_user.username,
-                utils.get_value(user, "first_name"),
+                user.get("first_name", ""),
             )
             self.sync_user_data(update)
 
             return log.log_username_updated(update)
 
         # check that firstname hasn't changed
-        if update.message.from_user.first_name != str(
-            utils.get_value(user, "first_name")
-        ):
+        if update.message.from_user.first_name != str(user.get("first_name", "")):
             self.supersede_user(user, "first_name")
             self.add_user(
                 update.message.from_user.id,
@@ -299,7 +244,7 @@ class MongoService:
 
         self.refresh_user(user)
 
-    def exceed_user_limit(self, user_id):
+    def get_user_limit(self, user_id):
         current_job_count = self.count_entries_by_userid(user_id)
 
         result = self.user_whitelist_collection.find_one(
@@ -312,5 +257,13 @@ class MongoService:
                 config.JOB_LIMIT_PER_PERSON,
             )
 
-        new_limit = utils.get_value(result, "new_limit")
-        return (current_job_count >= new_limit, new_limit)
+        new_limit = result.get("new_limit", 0)
+        return (current_job_count, new_limit)
+
+
+def entry_filter(entry):
+    return {
+        "created_ts": entry["created_ts"],
+        "chat_id": entry["chat_id"],
+        "jobname": entry["jobname"],
+    }

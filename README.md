@@ -12,10 +12,9 @@ Refer to our [user guide](https://github.com/hsdevelops/rm-bot/wiki/User-Guide) 
 
 ## Prerequisites
 1. Telegram bot created with [@botfather](https://telegram.me/botfather)
-2. A Google Cloud Service Account ([documentation](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating))
-3. Existing Google Sheet OR MongoDB. If using Google Sheets,
-   * Copy this [Google Sheet template](https://docs.google.com/spreadsheets/d/1FKfdxax5hDHdCZ1K1TTI1G8pO4hES1oloK6ob0Spk-w/edit?usp=sharing)
-   * Share the Google Sheet with the `SERVICE_ACCOUNT_INFO_CLIENT_EMAIL` of the Google Cloud Service Account
+2. Existing MongoDB
+
+Note: The latest version does not support Google Sheets as a database anymore. Please refer to the [gsheets branch](https://github.com/hsdevelops/rm-bot/tree/gsheets) (no longer maintained) if you would like to use Google Sheets for your database.
 
 ## Running locally
 

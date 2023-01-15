@@ -1,5 +1,4 @@
 import logging
-from common.utils import get_value
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -11,9 +10,19 @@ logger = logging.getLogger(__name__)
 # bot
 def log_new_job_added(update):
     logger.info(
-        '[BOT] User "%s" successfully added new job "%s" added in room "%s", chat_id=%s',
-        update.message.text,
+        '[BOT] User "%s" successfully added new job "%s" in room "%s", chat_id=%s',
         update.message.from_user.id,
+        update.message.text,
+        update.message.chat.title,
+        update.message.chat.id,
+    )
+
+
+def log_new_jobs_added(update, jobs_string):
+    logger.info(
+        '[BOT] User "%s" successfully added several jobs "%s" in room "%s", chat_id=%s',
+        update.message.from_user.id,
+        jobs_string,
         update.message.chat.title,
         update.message.chat.id,
     )
@@ -27,51 +36,59 @@ def log_new_channel_job_added(update):
     )
 
 
-def log_new_content_added(entry_df):
+def log_new_content_added(last_updated_by, jobname, chat_id):
     logger.info(
         '[BOT] User "%s" successfully added new message content for job "%s", chat_id=%s',
-        get_value(entry_df, "last_updated_by"),
-        get_value(entry_df, "jobname"),
-        get_value(entry_df, "chat_id"),
+        last_updated_by,
+        jobname,
+        chat_id,
     )
 
 
-def log_new_channel_jobname_added(entry_df):
+def log_new_channel_jobname_added(entry):
     logger.info(
         '[BOT] User "%s" successfully added jobname "%s" in channel, channel_id=%s, chat_id=%s',
-        get_value(entry_df, "last_updated_by"),
-        get_value(entry_df, "jobname"),
-        get_value(entry_df, "channel_id"),
-        get_value(entry_df, "chat_id"),
+        entry.get("last_updated_by"),
+        entry.get("jobname"),
+        entry.get("channel_id"),
+        entry.get("chat_id"),
     )
 
 
-def log_crontab_updated(entry_df):
+def log_crontab_updated(last_updated_by, jobname, chat_id):
     logger.info(
         '[BOT] User "%s" successfully added new crontab for job "%s", chat_id=%s',
-        get_value(entry_df, "last_updated_by"),
-        get_value(entry_df, "jobname"),
-        get_value(entry_df, "chat_id"),
+        last_updated_by,
+        jobname,
+        chat_id,
     )
 
 
-def log_job_removed(entry_df):
+def log_job_removed(last_updated_by, jobname, chat_id):
     logger.info(
         '[BOT] User "%s" successfully removed job "%s", chat_id=%s',
-        get_value(entry_df, "last_updated_by"),
-        get_value(entry_df, "jobname"),
-        get_value(entry_df, "chat_id"),
+        last_updated_by,
+        jobname,
+        chat_id,
     )
 
 
-def log_option_updated(entry_df, option):
+def log_option_updated(updated_fields, option, jobname, chat_id):
     logger.info(
         '[BOT] User "%s" successfully updated option "%s" to "%s" for job "%s", chat_id=%s',
-        get_value(entry_df, "last_updated_by"),
+        updated_fields["last_updated_by"],
         option,
-        get_value(entry_df, option),
-        get_value(entry_df, "jobname"),
-        get_value(entry_df, "chat_id"),
+        updated_fields[option],
+        jobname,
+        chat_id,
+    )
+
+
+def log_chat_reset(update):
+    logger.info(
+        '[BOT] User "%s" successfully reset chat, chat_id=%s',
+        update.callback_query.from_user.id,
+        update.callback_query.message.chat_id,
     )
 
 
@@ -103,17 +120,17 @@ def log_new_user(user_id, username):
 def log_entry_updated(entry):
     logger.info(
         '[DB] Updated job entry "%s", chat_id=%s',
-        get_value(entry, "jobname"),
-        str(get_value(entry, "chat_id")),
+        entry.get("jobname"),
+        str(entry.get("chat_id")),
     )
 
 
-def log_chat_entry_updated(entry, updated_field):
+def log_chat_entry_updated(chat_id, updated_field, updated_value):
     logger.info(
         '[DB] Updated chat %s to "%s", chat_id=%s',
         updated_field,
-        get_value(entry, updated_field),
-        str(get_value(entry, "chat_id")),
+        updated_value,
+        chat_id,
     )
 
 
@@ -130,8 +147,8 @@ def log_chats_tz_updated_by_type(count, user_id, chat_type, tz_offset):
 def log_user_updated(entry):
     logger.info(
         '[DB] Superseded user, user_id=%s, field_changed="%s"',
-        get_value(entry, "user_id"),
-        get_value(entry, "field_changed"),
+        entry.get("user_id"),
+        entry.get("field_changed"),
     )
 
 
