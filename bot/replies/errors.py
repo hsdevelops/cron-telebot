@@ -20,7 +20,7 @@ convo_unauthorized_message = (
     "Only the user who started this convo can continue this convo." + convo_postfix
 )
 no_photos_to_delete_error_message = (
-    "No photos to delete. Aborting operation..." + convo_postfix
+    "No photos to delete. Ending conversation..."
 )
 
 

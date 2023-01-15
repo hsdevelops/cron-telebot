@@ -23,33 +23,22 @@ def error(update, context):
 
 def prepare_dispatcher(dp):
     # conversations (must be declared first, not sure why)
+    convo_text_filter = Filters.text & (~Filters.text(["/cancel"]))
     dp.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler("edit", commands.edit)],
+            entry_points=[CommandHandler("edit", commands.edit_job)],
             states={
-                edit.state0: [
-                    MessageHandler(
-                        Filters.text & (~Filters.text(["/cancel"])), edit.choose_job
-                    )
-                ],
-                edit.state1: [
-                    MessageHandler(
-                        Filters.text & (~Filters.text(["/cancel"])),
-                        edit.choose_attribute,
-                    )
-                ],
+                edit.state0: [MessageHandler(convo_text_filter, edit.choose_job)],
+                edit.state1: [MessageHandler(convo_text_filter, edit.choose_attribute)],
                 edit.state2: [
-                    MessageHandler(
-                        Filters.text & (~Filters.text(["/cancel"])),
-                        edit.handle_edit_content,
-                    ),
+                    MessageHandler(convo_text_filter, edit.handle_edit_content),
                     MessageHandler(Filters.poll, edit.handle_edit_poll),
                 ],
                 edit.state_add_photo: [
-                    MessageHandler(Filters.photo, edit.handle_add_photo),
+                    MessageHandler(Filters.photo, edit.handle_add_photo)
                 ],
                 edit.state_del_photo: [
-                    MessageHandler(Filters.photo, edit.handle_clear_photos),
+                    MessageHandler(convo_text_filter, edit.handle_clear_photos),
                 ],
             },
             fallbacks=[CommandHandler("cancel", commands.cancel)],

@@ -10,7 +10,7 @@ jobs_creation_success_message = (
     "The following recurring messages are created, /list to view all messages:\n"
 )
 attribute_change_success_message = (
-    "Yipee! Your recurring message is updated successfully. /list to view all messages."
+    "Yipee! Your recurring message is updated successfully.\n\n/list to view all messages and their details."
 )
 
 
@@ -38,4 +38,6 @@ def send_jobs_creation_success_message(update, additional_text):
 
 
 def send_attribute_change_success_message(update):
-    update.message.reply_text(attribute_change_success_message)
+    update.message.reply_text(
+        attribute_change_success_message, reply_markup=ReplyKeyboardRemove()
+    )

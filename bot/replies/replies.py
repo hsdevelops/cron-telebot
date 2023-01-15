@@ -10,10 +10,11 @@ from telegram import (
 from bot.replies.success import *
 from bot.replies.errors import *
 from bot.replies.postfixes import *
+from bot.convos import edit
 
 # custom messages
 start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"  # html
-help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/list - list created jobs\n/delete - delete a job\n/options - view advanced job options\n/checkcron - check the validity/meaning of a cron expression\n/changetz - update timezone\n\n<b>Feeling lost?</b>\nRefer to our <a href="https://github.com/hsdevelops/rm-bot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at <a href="http://mailto:hs.develops.1@gmail.com/">hs.develops.1@gmail.com</a>.\n\n<b>Enjoying the bot?</b>\nYou can <a href="https://www.buymeacoffee.com/rmteam">buy the RM team a coffee</a>!'  # html
+help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/list - list created jobs/\n/delete - delete a job\n/edit - edit a job\n/checkcron - check the validity/meaning of a cron expression\n/changetz - update timezone\n\n<b>Feeling lost?</b>\nRefer to our <a href="https://github.com/hsdevelops/rm-bot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at <a href="http://mailto:hs.develops.1@gmail.com/">hs.develops.1@gmail.com</a>.\n\n<b>Enjoying the bot?</b>\nYou can <a href="https://www.buymeacoffee.com/rmteam">buy the RM team a coffee</a>!'  # html
 delete_message = "Hey, tell me the name of the job you want to delete. Get /list of available jobs.\n\n(swipe left to reply to this message)"
 request_jobname_message = (
     "Give me your job name\n\n(swipe left to reply to this message)"
@@ -22,10 +23,9 @@ request_crontab_message = 'Give me your cron schedule expression (e.g. 4 5 * * *
 request_text_message = (
     "Now give me what you want to send\n\n(swipe left to reply to this message)"
 )
-request_jobs_message = "Reply this message with your jobs in the following format (example):\n\n0 10 * * 2 Clean up a table\n0 10 * * 4 Check the calendar\n0 14 * * 5 Check this and that and that"
+request_jobs_message = "Reply this message with your jobs in the following format (example):\n\n0 10 * * 2 Clean up a table\n0 10 * * 4 Check the calendar\n0 14 * * 5 Check this and that and that\n\n(swipe left to reply to this message)"
 simple_prompt_message = "/add to create a new job"
 prompt_new_job_message = "The job already got this field. Please /add and create a new job. If you want to override, /delete job and create again."
-confirm_message_append = "To set advanced options, please use /options."
 list_jobs_message = "Hey, choose the job you are interested to know more about. The jobs are listed on the reply keyboard.\n\n(swipe left to reply to this message)"
 checkcron_message = "Hey, send me your cron expression, I will decrypt it for you.\n\n(swipe left to reply to this message)"
 checkcron_meaning_message = "Ok, that means: "
@@ -44,7 +44,10 @@ choose_job_message = (
 )
 choose_attribute_message = "Which attribute would you like to change?" + convo_postfix
 prompt_new_value_message = "What would you like to change it to?" + convo_postfix
-convo_ended_message = "Convo ended. " + simple_prompt_message
+convo_ended_message = (
+    "Convo ended.\n\n/add another recurring message or /edit an existing one."
+)
+reset_photos_confirmation_message = "This will clear ALL photos for this job. Proceed?"
 
 
 def prepare_keyboard(entries):
@@ -122,9 +125,9 @@ def send_choose_job_message(update, entries):
 
 def send_choose_attribute_message(update):
     keyboard = [
-        ["crontab", "content"],
-        ["add photo", "remove photo"],
-        ["delete previous"],
+        [edit.attr_cron, edit.attr_content],
+        [edit.attr_add_photo, edit.attr_del_photo],
+        [edit.attr_del_prev, edit.attr_pause_job],
     ]
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -159,13 +162,14 @@ def send_job_details(update, entry):
     if content_type == "poll":
         content = "(Poll) %s" % json.loads(content).get("question")
 
-    reply_text = "<b>Job name</b>: {}\n<b>Cron</b>: {}\n<b>Content</b>: {}\n<b>Photos</b>: {}\n<b>Category</b>: {}\n<b>Next run</b>: {}\n\n<b>Advanced options</b>\n/deleteprevious: {}".format(
+    is_paused = entry.get("paused_ts", "") != ""
+    reply_text = "<b>Job name</b>: {}\n<b>Cron</b>: {}\n<b>Content</b>: {}\n<b>Photos</b>: {}\n<b>Category</b>: {}\n<b>Next run</b>: {}\n\n<b>Advanced options</b>\nDelete previous: {}\n\nYou can now /edit jobs.".format(
         entry.get("jobname", ""),
         entry.get("crontab", ""),
         content,
         "no" if photo_id == "" else len(photo_id.split(";")),
         "in-chat" if entry.get("channel_id", "") == "" else "channel",
-        entry.get("user_nextrun_ts", ""),
+        "paused" if is_paused else entry.get("user_nextrun_ts", ""),
         "enabled" if entry.get("option_delete_previous", "") != "" else "disabled",
     )
     update.message.reply_text(
@@ -198,15 +202,15 @@ def send_confirm_message(update, entry, cron_description):
         else 'message "%s"' % entry.get("content")
     )
     update.message.reply_text(
-        text='Ok. Done. Added a job titled "{}". Your {} will be sent {}. {} {}'.format(
+        text='Ok. Done. Added a job titled "{}". Your {} will be sent {}. {}'.format(
             entry.get("jobname"),
             content,
             cron_description,
-            confirm_message_append,
             "" if entry.get("channel_id", "") == "" else add_to_channel_message,
         ),
         parse_mode=ParseMode.HTML,
     )
+
 
 def send_checkcron_invalid_message(update):
     update.message.reply_text(
@@ -231,8 +235,20 @@ def send_change_timezone_message(update):
 
 
 def send_convo_ended_message(update):
-    update.message.reply_text(convo_ended_message)
+    update.message.reply_text(convo_ended_message, reply_markup=ReplyKeyboardRemove())
 
 
 def send_prompt_new_value_message(update):
-    update.message.reply_text(prompt_new_value_message)
+    update.message.reply_text(
+        prompt_new_value_message, reply_markup=ReplyKeyboardRemove()
+    )
+
+
+def send_reset_photos_confirmation_message(update):
+    keyboard = [["yes", "no"]]
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard, one_time_keyboard=True, resize_keyboard=True
+    )
+    update.message.reply_text(
+        reset_photos_confirmation_message, reply_markup=reply_markup
+    )

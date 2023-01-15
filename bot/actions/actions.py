@@ -154,7 +154,7 @@ def add_new_jobs(update, context):
         except Exception:
             continue
 
-        jobname = generate_jobname(db_service, update.message.chat.type)
+        jobname = generate_jobname(db_service, update.message.chat.type, chat_id)
         db_service.add_new_entry(
             chat_id=chat_id,
             jobname=jobname,
@@ -261,24 +261,12 @@ def add_message(update, context, photo=False, poll=False):
         replies.send_request_crontab_message(update)
 
 
-def update_crontab(update, context, edit=False) -> bool:
+def prepare_crontab_update(update, db_service):
     try:
         description = get_description(update.message.text).lower()
     except Exception:  # crontab is not valid
         replies.send_invalid_crontab_message(update)
-        return False
-
-    db_service = mongo.MongoService(update)
-    if not edit:
-        if not check_rights(update, context, db_service):
-            return False
-        entry = db_service.retrieve_latest_entry(update.message.chat.id)
-        if entry is None:
-            replies.send_simple_prompt_message(update)
-            return False
-        if entry.get("crontab", "") != "":  # field must be empty
-            replies.send_prompt_new_job_message(update)
-            return False
+        return None, None, True
 
     # arrange next run date and time
     crontab = update.message.text
@@ -287,21 +275,37 @@ def update_crontab(update, context, edit=False) -> bool:
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
     except Exception:
         replies.send_invalid_crontab_message(update)
-        return False
+        return None, None, True
+
     # update db entry
-    last_updated_by = update.message.from_user.id
     fields = {
         "crontab": crontab,
         "nextrun_ts": db_nextrun_ts,
         "user_nextrun_ts": user_nextrun_ts,
-        "last_updated_by": last_updated_by,
+        "last_updated_by": update.message.from_user.id,
     }
-    db_service.update_entry(mongo.entry_filter(entry), fields)
-    log.log_crontab_updated(last_updated_by, entry.get("jobname"), entry.get("chat_id"))
 
-    # reply
+    return description, fields, False
+
+
+def update_crontab(update, context):
+    db_service = mongo.MongoService(update)
+    if not check_rights(update, context, db_service):
+        return
+    entry = db_service.retrieve_latest_entry(update.message.chat.id)
+    if entry is None:
+        return replies.send_simple_prompt_message(update)
+    if entry.get("crontab", "") != "":  # field must be empty
+        return replies.send_prompt_new_job_message(update)
+
+    description, fields, has_err = prepare_crontab_update(update, db_service)
+    if has_err:
+        return
+
+    jobname, chat_id = entry.get("jobname"), entry.get("chat_id")
+    db_service.update_entry(mongo.entry_filter(entry), fields)
+    log.log_crontab_updated(update.message.from_user.id, jobname, chat_id)
     replies.send_confirm_message(update, entry, description)
-    return True
 
 
 def update_timezone(update, context):

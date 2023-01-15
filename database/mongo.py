@@ -94,11 +94,14 @@ class MongoService:
         return self.get_one_entry(chat_id, jobname) is not None
 
     def get_entries_by_nextrun(self, ts):
-        return list(
-            self.main_collection.find(
-                {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
-            ).sort([("created_at", ASCENDING)])
-        )
+        base_q = {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
+        q = {
+            "$or": [
+                {"paused_ts": "", **base_q},
+                {"paused_ts": {"$exists": False}, **base_q},
+            ]
+        }
+        return list(self.main_collection.find(q).sort([("created_at", ASCENDING)]))
 
     def get_entries_by_chatid(self, chat_id):
         q = {

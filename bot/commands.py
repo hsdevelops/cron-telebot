@@ -6,7 +6,7 @@ from telegram.ext import ConversationHandler
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
-def start(update, context):
+def start(update, _):
     """Send a message when the command /start is issued."""
     db_service = mongo.MongoService(update)
 
@@ -150,7 +150,7 @@ def reset(update, context):
     replies.send_reset_confirmation_message(update)
 
 
-def edit(update, context):
+def edit_job(update, context):
     """Send a message when the command /edit is issued."""
 
     db_service = mongo.MongoService(update)
