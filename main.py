@@ -23,7 +23,9 @@ def error(update, context):
 
 def prepare_dispatcher(dp):
     # conversations (must be declared first, not sure why)
-    convo_text_filter = Filters.text & (~Filters.text(["/cancel"]))
+    convo_text_filter = Filters.text & (
+        ~Filters.text(["/cancel", "/cancel@cron_telebot"])
+    )
     dp.add_handler(
         ConversationHandler(
             entry_points=[CommandHandler("edit", commands.edit_job)],
