@@ -30,10 +30,6 @@ def choose_job(update, context):
     db_service = mongo.MongoService(update)
     jobname = str(update.message.text)
 
-    if update.message.from_user.id != context.user_data["user_id"]:
-        replies.send_convo_unauthorized_message(update)
-        return state0
-
     if not db_service.check_exists(update.message.chat.id, jobname):
         replies.send_error_message(update)
         return state0
@@ -47,10 +43,6 @@ def choose_job(update, context):
 def choose_attribute(update, context):
     attr = str(update.message.text)
     context.user_data["attribute"] = attr
-
-    if update.message.from_user.id != context.user_data["user_id"]:
-        replies.send_convo_unauthorized_message(update)
-        return state1
 
     if attr not in attr_set:
         replies.send_error_message(update)
@@ -116,9 +108,6 @@ def toggle_pause_job(update, context):
 
 # state 2
 def handle_edit_content(update, context):
-    if update.message.from_user.id != context.user_data["user_id"]:
-        replies.send_convo_unauthorized_message(update)
-        return state2
 
     jobname, attr = context.user_data["jobname"], context.user_data["attribute"]
     chat_id = update.message.chat.id

@@ -88,10 +88,6 @@ def send_quiz_unavailable_message(update):
     )
 
 
-def send_convo_unauthorized_message(update):
-    update.message.reply_text(convo_unauthorized_message)
-
-
 def send_no_photos_to_delete_error_message(update):
     update.message.reply_text(no_photos_to_delete_error_message)
 
