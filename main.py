@@ -1,5 +1,14 @@
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispatcher
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    MessageHandler,
+    Filters,
+    Dispatcher,
+    CallbackQueryHandler,
+    ConversationHandler,
+)
 from telegram import Update, Bot
+from bot.convos import edit
 import config
 from common.log import logger
 from flask import request, Response
@@ -13,6 +22,29 @@ def error(update, context):
 
 
 def prepare_dispatcher(dp):
+    # conversations (must be declared first, not sure why)
+    convo_text_filter = Filters.text & (
+        ~Filters.text(["/cancel", "/cancel@cron_telebot"])
+    )
+    dp.add_handler(
+        ConversationHandler(
+            entry_points=[CommandHandler("edit", commands.edit_job)],
+            states={
+                edit.state0: [MessageHandler(convo_text_filter, edit.choose_job)],
+                edit.state1: [MessageHandler(convo_text_filter, edit.choose_attribute)],
+                edit.state2: [
+                    MessageHandler(convo_text_filter, edit.handle_edit_content),
+                    MessageHandler(Filters.poll, edit.handle_edit_poll),
+                ],
+                edit.state3: [MessageHandler(Filters.photo, edit.handle_add_photo)],
+                edit.state4: [
+                    MessageHandler(convo_text_filter, edit.handle_clear_photos)
+                ],
+            },
+            fallbacks=[CommandHandler("cancel", commands.cancel)],
+        )
+    )
+
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", commands.start))
     dp.add_handler(CommandHandler("help", commands.help))
@@ -21,15 +53,19 @@ def prepare_dispatcher(dp):
     dp.add_handler(CommandHandler("list", commands.list_jobs))
     dp.add_handler(CommandHandler("checkcron", commands.checkcron))
     dp.add_handler(CommandHandler("options", commands.list_options))
-    dp.add_handler(CommandHandler("deleteprevious", commands.option_delete_previous))
     dp.add_handler(CommandHandler("adminsonly", commands.option_restrict_to_admins))
     dp.add_handler(CommandHandler("creatoronly", commands.option_restrict_to_user))
     dp.add_handler(CommandHandler("changetz", commands.change_tz))
+    dp.add_handler(CommandHandler("reset", commands.reset))
+    dp.add_handler(CommandHandler("addmultiple", commands.add_multiple))
 
     # on noncommand i.e message
     dp.add_handler(MessageHandler(Filters.text, handlers.handle_messages))
     dp.add_handler(MessageHandler(Filters.photo, handlers.handle_photos))
     dp.add_handler(MessageHandler(Filters.poll, handlers.handle_polls))
+
+    # on callback
+    dp.add_handler(CallbackQueryHandler(handlers.handle_callback))
 
     # log all errors
     dp.add_error_handler(error)

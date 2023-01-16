@@ -1,4 +1,5 @@
-from bot import replies, actions
+from bot.actions import actions
+from bot.replies import replies
 
 
 def handle_messages(update, context):
@@ -26,13 +27,13 @@ def handle_messages(update, context):
         actions.show_job_details(update, context)
     elif text == replies.checkcron_message:
         actions.decrypt_cron(update)
-    elif text == replies.option_delete_previous_message:
-        actions.toggle_delete_previous(update, context)
+    elif text == replies.request_jobs_message:
+        actions.add_new_jobs(update, context)
     elif (
         text == replies.request_crontab_message
         or text == replies.invalid_crontab_message
     ):
-        actions.add_crontab(update, context)
+        actions.update_crontab(update, context)
     elif text == replies.change_timezone_message:
         actions.update_timezone(update, context)
 
@@ -58,9 +59,12 @@ def handle_polls(update, context):
 
     # job creation for channels
     is_channel_job = update.message.forward_from_chat is not None
-    if is_channel_job and update.message.poll.type == "quiz":
-        return replies.send_channel_quiz_unavailable_message(update)
-    elif is_channel_job:
+    if update.message.poll.type == "quiz" and (
+        update.message.chat.type != "private" or is_channel_job
+    ):
+        return replies.send_quiz_unavailable_message(update)
+
+    if is_channel_job:
         return actions.add_new_channel_job(update=update, poll=True)
 
     reply_to_message = update.message.reply_to_message
@@ -69,3 +73,13 @@ def handle_polls(update, context):
 
     if reply_to_message.text_html == replies.request_text_message:
         actions.add_message(update=update, context=context, photo=False, poll=True)
+
+
+def handle_callback(update, context):
+    query = update.callback_query
+    if query.data == "1":
+        actions.reset_chat(update, context)
+    context.bot.editMessageReplyMarkup(
+        chat_id=query.message.chat_id, message_id=query.message.message_id
+    )
+    query.answer()

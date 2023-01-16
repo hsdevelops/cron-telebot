@@ -34,7 +34,6 @@ Commit the changes once you are happy with them.
 
 When you're finished with the changes, create a pull request, also known as a PR.
 - Don't forget to link PR to issue if you are solving one.
-- Once you submit your PR, your changes will be deployed to the UAT environment. You can test your changes using the [RM UAT](https://t.me/scheduler_telebot) telegram bot. If your deployment is overridden by another PR, you may find and rerun your deployment at [Github Actions](https://github.com/huishun98/recurring-messages-telebot/actions) to redeploy your changes.
 - A team member will review your proposal. We may ask questions or request for additional information.
 - We may ask for changes to be made before a PR can be merged. You can apply suggested changes directly through the UI. You can make any other changes in your fork, then commit them to your branch.
 - As you update your PR and apply changes, mark each conversation as resolved.
