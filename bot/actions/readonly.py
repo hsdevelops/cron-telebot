@@ -3,6 +3,7 @@ from database import mongo
 from cron_descriptor import get_description
 from bot.actions.permissions import check_rights
 
+
 def show_job_details(update, context):
     db_service = mongo.MongoService(update)
     if not check_rights(update, context, db_service):

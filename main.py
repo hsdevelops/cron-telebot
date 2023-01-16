@@ -34,11 +34,9 @@ def prepare_dispatcher(dp):
                     MessageHandler(convo_text_filter, edit.handle_edit_content),
                     MessageHandler(Filters.poll, edit.handle_edit_poll),
                 ],
-                edit.state_add_photo: [
-                    MessageHandler(Filters.photo, edit.handle_add_photo)
-                ],
-                edit.state_del_photo: [
-                    MessageHandler(convo_text_filter, edit.handle_clear_photos),
+                edit.state3: [MessageHandler(Filters.photo, edit.handle_add_photo)],
+                edit.state4: [
+                    MessageHandler(convo_text_filter, edit.handle_clear_photos)
                 ],
             },
             fallbacks=[CommandHandler("cancel", commands.cancel)],

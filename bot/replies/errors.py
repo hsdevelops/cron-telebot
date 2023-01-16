@@ -19,9 +19,8 @@ invalid_crontab_message = 'This expression is invalid. Please provide a valid ex
 convo_unauthorized_message = (
     "Only the user who started this convo can continue this convo." + convo_postfix
 )
-no_photos_to_delete_error_message = (
-    "No photos to delete. Ending conversation..."
-)
+no_photos_to_delete_error_message = "No photos to delete. Ending conversation..."
+attribute_change_error_message = "Something went wrong on the server... Please contact the bot owner at hs.develops.1@gmail.com."
 
 
 def send_error_message(update):
@@ -95,3 +94,7 @@ def send_convo_unauthorized_message(update):
 
 def send_no_photos_to_delete_error_message(update):
     update.message.reply_text(no_photos_to_delete_error_message)
+
+
+def send_attribute_change_error_message(update):
+    update.message.reply_text(attribute_change_error_message)

@@ -5,7 +5,7 @@ from database import mongo
 from common import log, utils
 import jsons
 
-state0, state1, state2, state_add_photo, state_del_photo = range(5)
+state0, state1, state2, state3, state4 = range(5)
 
 attr_cron = "crontab"
 attr_content = "text content"
@@ -62,7 +62,7 @@ def choose_attribute(update, context):
 
     if attr == attr_del_photo:
         replies.send_reset_photos_confirmation_message(update)
-        return state_del_photo
+        return state4
 
     if attr == attr_pause_job:
         toggle_pause_job(update, context)
@@ -71,7 +71,7 @@ def choose_attribute(update, context):
     replies.send_prompt_new_value_message(update)
 
     if attr == attr_add_photo:
-        return state_add_photo
+        return state3
 
     return state2
 
@@ -99,6 +99,16 @@ def toggle_pause_job(update, context):
         "paused_ts": new_option_value,
         "last_updated_by": update.message.from_user.id,
     }
+    if new_option_value == "":  # calculate next run
+        crontab = entry.get("crontab")
+        _, fields, has_err = actions.prepare_crontab_update(update, crontab, db_service)
+        if has_err:
+            return replies.send_attribute_change_error_message(update)
+        fields_to_update = {
+            "nextrun_ts": fields["nextrun_ts"],
+            "user_nextrun_ts": fields["user_nextrun_ts"],
+            **fields_to_update,
+        }
     db_service.update_entry({"_id": entry["_id"]}, fields_to_update)
     log.log_option_updated(fields_to_update, "paused_ts", jobname, chat_id)
     replies.send_attribute_change_success_message(update)
@@ -115,7 +125,8 @@ def handle_edit_content(update, context):
     db_service = mongo.MongoService(update)
 
     if attr == attr_cron:
-        _, fields, has_err = actions.prepare_crontab_update(update, db_service)
+        crontab = update.message.text
+        _, fields, has_err = actions.prepare_crontab_update(update, crontab, db_service)
         if has_err:
             return state2
         mongo_key = "crontab"

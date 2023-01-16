@@ -261,15 +261,14 @@ def add_message(update, context, photo=False, poll=False):
         replies.send_request_crontab_message(update)
 
 
-def prepare_crontab_update(update, db_service):
+def prepare_crontab_update(update, crontab, db_service):
     try:
-        description = get_description(update.message.text).lower()
+        description = get_description(crontab).lower()
     except Exception:  # crontab is not valid
         replies.send_invalid_crontab_message(update)
         return None, None, True
 
     # arrange next run date and time
-    crontab = update.message.text
     user_tz_offset = db_service.retrieve_tz(update.message.chat.id)
     try:
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
@@ -298,7 +297,8 @@ def update_crontab(update, context):
     if entry.get("crontab", "") != "":  # field must be empty
         return replies.send_prompt_new_job_message(update)
 
-    description, fields, has_err = prepare_crontab_update(update, db_service)
+    crontab = update.message.text
+    description, fields, has_err = prepare_crontab_update(update, crontab, db_service)
     if has_err:
         return
 
