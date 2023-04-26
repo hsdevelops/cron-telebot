@@ -166,10 +166,7 @@ def add_new_jobs(update, context):
             user_nextrun_ts=user_nextrun,
         )
 
-        successful_creation.append(
-            "%s: %s %s"
-            % (jobname, text_content[:10], "..." if len(text_content) > 9 else "")
-        )
+        successful_creation.append("%s: (%s) %s" % (jobname, crontab, text_content))
 
     if len(successful_creation) > 0:
         log.log_new_jobs_added(update, " // ".join(successful_creation))

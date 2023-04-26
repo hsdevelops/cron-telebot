@@ -1,4 +1,4 @@
-name: Deploy to uat
+name: Deploy to uat (PR)
 on:
   pull_request:
     types:
@@ -6,6 +6,11 @@ on:
       - edited
     branches:
       - main
+  # push:
+  #   branches:
+  #     - '**'      # matches every branch
+  #     - '!uat'    # excludes uat
+  #     - '!main'   # excludes main
 jobs:
   deploy:
     permissions: write-all
