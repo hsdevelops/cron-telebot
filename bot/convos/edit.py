@@ -186,8 +186,7 @@ def handle_clear_photos(update, context):
     res = update.message.text.lower()
 
     if res == "no":
-        replies.send_convo_ended_message(update)
-        return ConversationHandler.END
+        return end_convo(update, context)
 
     if res == "yes":
         db_service = mongo.MongoService(update)
@@ -210,3 +209,8 @@ def handle_clear_photos(update, context):
         return ConversationHandler.END
 
     replies.send_error_message(update)
+
+
+def end_convo(update, _):
+    replies.send_convo_ended_message(update)
+    return ConversationHandler.END

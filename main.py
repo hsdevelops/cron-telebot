@@ -23,9 +23,7 @@ def error(update, context):
 
 def prepare_dispatcher(dp):
     # conversations (must be declared first, not sure why)
-    convo_text_filter = Filters.text & (
-        ~Filters.text(["/cancel", "/cancel@cron_telebot"])
-    )
+    convo_text_filter = Filters.text & ~Filters.command
     dp.add_handler(
         ConversationHandler(
             entry_points=[CommandHandler("edit", commands.edit_job)],
@@ -41,7 +39,7 @@ def prepare_dispatcher(dp):
                     MessageHandler(convo_text_filter, edit.handle_clear_photos)
                 ],
             },
-            fallbacks=[CommandHandler("cancel", commands.cancel)],
+            fallbacks=[MessageHandler(Filters.command, edit.end_convo)],
         )
     )
 

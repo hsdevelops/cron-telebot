@@ -1,6 +1,6 @@
-# RM Bot
+# Recurring Messages
 
-RM Bot ([@cron_telebot](https://t.me/cron_telebot)) is a Telegram bot that schedules recurring Telegram messages. :sparkles:
+Recurring Messages ([@cron_telebot](https://t.me/cron_telebot)) is a Telegram bot that schedules recurring Telegram messages. :sparkles:
 
 Refer to our [user guide](https://github.com/hsdevelops/rm-bot/wiki/User-Guide) for usage instructions.
 
@@ -24,7 +24,7 @@ Note: The latest version does not support Google Sheets as a database anymore. P
    ```
    virtualenv venv
    source venv/bin/activate
-   pip install -r requirements-all.txt
+   pip install -r requirements.txt
    ```
 
 3. Start services. Run `python main.py` to start the telegram bot. On another terminal, run `python api.py` to start the Flask endpoint (base path is `/api`).
