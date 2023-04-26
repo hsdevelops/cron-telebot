@@ -1,6 +1,5 @@
 from config import JOB_LIMIT_PER_PERSON
 from telegram import ParseMode, ForceReply
-from bot.replies.postfixes import *
 
 error_message = "You know that's not right..."
 exceed_limit_error_message = (
@@ -17,7 +16,7 @@ invalid_new_job_message = "A job with this name already exists. Please /add and 
 quiz_unavailable_message = 'Recurring messages unfortunately cannot support recurring quizzes in channels and groups... because Telegram does not return the correct option id for forwarded messages (◕︵◕) (<a href="https://docs.python-telegram-bot.org/en/v12.5.1/telegram.poll.html#telegram.Poll.correct_option_id">see docs</a>)'
 invalid_crontab_message = 'This expression is invalid. Please provide a valid expression. Click <a href="https://crontab.guru/">here</a> if you need help. Use /checkcron to check your cron expression.'  # html
 convo_unauthorized_message = (
-    "Only the user who started this convo can continue this convo." + convo_postfix
+    "Only the user who started this convo can continue this convo."
 )
 no_photos_to_delete_error_message = "No photos to delete. Ending conversation..."
 attribute_change_error_message = "Something went wrong on the server... Please contact the bot owner at hs.develops.1@gmail.com."
@@ -58,7 +57,7 @@ def send_user_unauthorized_error_message(update, bot_ic):
     update.message.reply_text(reply)
 
 
-def send_wrong_restrction_message(update, bot_ic):
+def send_wrong_restriction_message(update, bot_ic):
     reply = wrong_restrction_error_message.replace("__bot_ic__", bot_ic)
     update.message.reply_text(reply)
 

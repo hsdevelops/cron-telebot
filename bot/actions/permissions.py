@@ -17,7 +17,7 @@ def restrict_to_admins(update, db_service):
         return replies.send_restrict_success_message(update, "everyone")
 
     if current_restriction == "creator":
-        return replies.send_wrong_restrction_message(update, "the current bot user")
+        return replies.send_wrong_restriction_message(update, "the current bot user")
 
     db_service.update_chat_entry(chat_id, {"restriction": "administrator"})
     return replies.send_restrict_success_message(update, "only group admins")
@@ -62,7 +62,7 @@ def restrict_to_user(update, db_service):
 
     current_restriction = entry.get("restriction", "")
     if current_restriction == "administrator":
-        return replies.send_wrong_restrction_message(update, "group admins")
+        return replies.send_wrong_restriction_message(update, "group admins")
 
     if current_restriction == "creator":
         db_service.update_chat_entry(chat_id, {"restriction": ""})

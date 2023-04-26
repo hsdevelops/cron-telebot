@@ -6,9 +6,7 @@ timezone_change_success_message = (
     "Yipee! Your timezone has been updated to UTC__utc_tz__."
 )
 reset_success_messge = "Yeet! No more recurring messages in this chat."
-jobs_creation_success_message = (
-    "The following recurring messages are created, /list to view all messages:\n"
-)
+jobs_creation_success_message = "The following recurring messages are created, /list to view all messages and their details:\n"
 attribute_change_success_message = "Yipee! Your recurring message is updated successfully.\n\n/list to view all messages and their details."
 
 

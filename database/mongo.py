@@ -1,7 +1,6 @@
 import config
 from common import log, utils
 from pymongo import MongoClient, ASCENDING, DESCENDING
-from datetime import datetime, timedelta, timezone
 
 # define service
 class MongoService:
@@ -193,7 +192,7 @@ class MongoService:
     def supersede_user(self, entry, field_changed):
         # update previous entry
         update = {"superseded_at": utils.now(), "field_changed": field_changed}
-        self.user_data_collection.update_one({"_id": entry[""]}, {"$set": update})
+        self.user_data_collection.update_one({"_id": entry["_id"]}, {"$set": update})
         log.log_user_updated(entry)
 
     def refresh_user(self, entry):

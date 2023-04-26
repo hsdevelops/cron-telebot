@@ -1,6 +1,7 @@
 .DS_Store
 venv/
-tests/
+tests/integration
+scripts/
 tmp/
 
 bot.session
