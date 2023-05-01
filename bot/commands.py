@@ -1,8 +1,10 @@
-from bot.convos import edit
+from telegram import Update
+from bot.convos import config_chat, edit
 from bot.replies import replies
 from database import mongo
+from database.dbutils import dbutils
 from bot.actions import permissions
-from telegram.ext import ConversationHandler
+
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
@@ -11,7 +13,7 @@ def start(update, _):
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to create new job
-    if db_service.retrieve_tz(update.message.chat.id) is None:
+    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return replies.send_start_message(update)
 
     replies.send_simple_prompt_message(update)
@@ -32,14 +34,15 @@ def add(update, context):
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to create new job
-    if db_service.retrieve_tz(update.message.chat.id) is None:
+    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return replies.send_start_message(update)
 
     if not permissions.check_rights(update, context, db_service):
         return
 
     # person limit
-    job_count, user_limit = db_service.get_user_limit(update.message.from_user.id)
+    user_id = update.message.from_user.id
+    job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
         return replies.send_exceed_limit_error_message(update, user_limit)
 
@@ -51,14 +54,15 @@ def add_multiple(update, context):
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to create new job
-    if db_service.retrieve_tz(update.message.chat.id) is None:
+    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return replies.send_start_message(update)
 
     if not permissions.check_rights(update, context, db_service):
         return
 
     # person limit
-    job_count, user_limit = db_service.get_user_limit(update.message.from_user.id)
+    user_id = update.message.from_user.id
+    job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
         return replies.send_exceed_limit_error_message(update, user_limit)
 
@@ -71,7 +75,7 @@ def delete(update, context):
     if not permissions.check_rights(update, context, db_service):
         return
 
-    entries = db_service.get_entries_by_chatid(update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return replies.send_simple_prompt_message(update)
 
@@ -84,7 +88,7 @@ def list_jobs(update, context):
     if not permissions.check_rights(update, context, db_service):
         return
 
-    entries = db_service.get_entries_by_chatid(update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return replies.send_simple_prompt_message(update)
 
@@ -127,8 +131,8 @@ def change_tz(update, context):
     """Send a message when the command /changetz is issued."""
     db_service = mongo.MongoService(update)
 
-    # timezone must be defined in order to create new job
-    if db_service.retrieve_tz(update.message.chat.id) is None:
+    # timezone must be defined in order to change tz
+    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return replies.send_start_message(update)
 
     if not permissions.check_rights(update, context, db_service):
@@ -137,13 +141,32 @@ def change_tz(update, context):
     return replies.send_change_timezone_message(update)
 
 
+def change_sender(update: Update, _):
+    """Send a message when the command /changesender is issued."""
+    db_service = mongo.MongoService(update)
+
+    # find groups/private/channel created by user
+    user_id = update.message.from_user.id
+    chat_type = update.message.chat.type
+
+    if chat_type != "private":
+        return replies.send_private_only_error_message(update)
+
+    chat_entries = dbutils.find_groups_created_by(db_service, user_id)
+    if len(chat_entries) <= 0:
+        return replies.send_missing_chats_error_message(update)
+
+    replies.send_choose_chat_message(update, chat_entries)
+    return config_chat.state0
+
+
 def reset(update, context):
     """Send a message when the command /reset is issued."""
     db_service = mongo.MongoService(update)
     if not permissions.check_rights(update, context, db_service):
         return
 
-    entries = db_service.get_entries_by_chatid(update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:  # there must be at least one job available
         return replies.send_simple_prompt_message(update)
 
@@ -159,15 +182,9 @@ def edit_job(update, context):
 
     context.user_data["user_id"] = update.message.from_user.id
 
-    entries = db_service.get_entries_by_chatid(update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return replies.send_simple_prompt_message(update)
 
     replies.send_choose_job_message(update, entries)
     return edit.state0
-
-
-def cancel(update, _):
-    """Send a message when the command /cancel is issued."""
-    replies.send_convo_ended_message(update)
-    return ConversationHandler.END

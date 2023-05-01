@@ -7,6 +7,6 @@ tmp/
 bot.session
 keys.json
 
-*.pyc
+__pycache__
 photo-*
 .*

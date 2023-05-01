@@ -1,4 +1,4 @@
-from config import JOB_LIMIT_PER_PERSON
+from config import JOB_LIMIT_PER_PERSON, BOT_NAME
 from telegram import ParseMode, ForceReply
 
 error_message = "You know that's not right..."
@@ -12,7 +12,7 @@ wrong_restrction_error_message = (
     "Restriction is already set. Please ask __bot_ic__ to unset bot restriction first."
 )
 timezone_nochange_error_message = "Whut? That's the same timezone!"
-invalid_new_job_message = "A job with this name already exists. Please /add and create a new job. If you want to override, /delete job and create again."
+invalid_new_job_message = "A job with this name already exists. Please /add and create a new job, or /edit this job."
 quiz_unavailable_message = 'Recurring messages unfortunately cannot support recurring quizzes in channels and groups... because Telegram does not return the correct option id for forwarded messages (◕︵◕) (<a href="https://docs.python-telegram-bot.org/en/v12.5.1/telegram.poll.html#telegram.Poll.correct_option_id">see docs</a>)'
 invalid_crontab_message = 'This expression is invalid. Please provide a valid expression. Click <a href="https://crontab.guru/">here</a> if you need help. Use /checkcron to check your cron expression.'  # html
 convo_unauthorized_message = (
@@ -20,6 +20,9 @@ convo_unauthorized_message = (
 )
 no_photos_to_delete_error_message = "No photos to delete. Ending conversation..."
 attribute_change_error_message = "Something went wrong on the server... Please contact the bot owner at hs.develops.1@gmail.com."
+private_only_error_message = "This command can only be run in private chat with %s"
+missing_chats_error_message = "Please add %s to a group or create a job for a channel"
+missing_bot_in_group_message = "Terminating conversation... \n\nPlease add bot into the group as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>\nbefore running /changesender."
 
 
 def send_error_message(update):
@@ -93,3 +96,15 @@ def send_no_photos_to_delete_error_message(update):
 
 def send_attribute_change_error_message(update):
     update.message.reply_text(attribute_change_error_message)
+
+
+def send_private_only_error_message(update):
+    update.message.reply_text(private_only_error_message % BOT_NAME)
+
+
+def send_missing_chats_error_message(update):
+    update.message.reply_text(missing_chats_error_message % BOT_NAME)
+
+
+def send_missing_bot_in_group_message(update):
+    update.message.reply_text(missing_bot_in_group_message, parse_mode=ParseMode.HTML)

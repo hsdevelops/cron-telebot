@@ -1,7 +1,9 @@
 from telegram.ext import ConversationHandler
 from bot.actions import actions
 from bot.replies import replies
+from common.enums import ContentType
 from database import mongo
+from database.dbutils import dbutils
 from common import log, utils
 import jsons
 
@@ -14,23 +16,21 @@ attr_del_photo = "remove all photos"
 attr_del_prev = "toggle delete previous"
 attr_pause_job = "pause/resume job"
 
-attr_set = set(
-    [
-        attr_cron,
-        attr_content,
-        attr_add_photo,
-        attr_del_photo,
-        attr_del_prev,
-        attr_pause_job,
-    ]
-)
+attrs = [
+    attr_cron,
+    attr_content,
+    attr_add_photo,
+    attr_del_photo,
+    attr_del_prev,
+    attr_pause_job,
+]
 
 # state 0
 def choose_job(update, context):
     db_service = mongo.MongoService(update)
     jobname = str(update.message.text)
 
-    if not db_service.check_exists(update.message.chat.id, jobname):
+    if not dbutils.entry_exists(db_service, update.message.chat.id, jobname):
         replies.send_error_message(update)
         return state0
 
@@ -44,7 +44,7 @@ def choose_attribute(update, context):
     attr = str(update.message.text)
     context.user_data["attribute"] = attr
 
-    if attr not in attr_set:
+    if attr not in attrs:
         replies.send_error_message(update)
         return state1
 
@@ -71,38 +71,40 @@ def choose_attribute(update, context):
 def toggle_delete_previous(update, context):
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     db_service = mongo.MongoService(update)
-    entry = db_service.get_one_entry(chat_id, jobname)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
     new_option_value = "" if entry.get("option_delete_previous", "") != "" else True
-    fields_to_update = {
+    payload = {
         "option_delete_previous": new_option_value,
         "last_updated_by": update.message.from_user.id,
     }
-    db_service.update_entry({"_id": entry["_id"]}, fields_to_update)
-    log.log_option_updated(fields_to_update, "option_delete_previous", jobname, chat_id)
+    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    log.log_option_updated(payload, "option_delete_previous", jobname, chat_id)
     replies.send_attribute_change_success_message(update)
 
 
 def toggle_pause_job(update, context):
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     db_service = mongo.MongoService(update)
-    entry = db_service.get_one_entry(chat_id, jobname)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
     new_option_value = "" if entry.get("paused_ts", "") != "" else utils.now()
-    fields_to_update = {
+    payload = {
         "paused_ts": new_option_value,
         "last_updated_by": update.message.from_user.id,
     }
     if new_option_value == "":  # calculate next run
         crontab = entry.get("crontab")
-        _, fields, has_err = actions.prepare_crontab_update(update, crontab, db_service)
+        _, crontab_payload, has_err = actions.prepare_crontab_update(
+            update, crontab, db_service
+        )
         if has_err:
             return replies.send_attribute_change_error_message(update)
-        fields_to_update = {
-            "nextrun_ts": fields["nextrun_ts"],
-            "user_nextrun_ts": fields["user_nextrun_ts"],
-            **fields_to_update,
+        payload = {
+            "nextrun_ts": crontab_payload["nextrun_ts"],
+            "user_nextrun_ts": crontab_payload["user_nextrun_ts"],
+            **payload,
         }
-    db_service.update_entry({"_id": entry["_id"]}, fields_to_update)
-    log.log_option_updated(fields_to_update, "paused_ts", jobname, chat_id)
+    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    log.log_option_updated(payload, "paused_ts", jobname, chat_id)
     replies.send_attribute_change_success_message(update)
 
 
@@ -115,24 +117,30 @@ def handle_edit_content(update, context):
 
     if attr == attr_cron:
         crontab = update.message.text
-        _, fields, has_err = actions.prepare_crontab_update(update, crontab, db_service)
+        _, payload, has_err = actions.prepare_crontab_update(
+            update, crontab, db_service
+        )
         if has_err:
             return state2
         mongo_key = "crontab"
 
-    entry = db_service.get_one_entry(chat_id, jobname)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
     if attr == attr_content:
         old_content_type = entry.get("content_type", "")
         mongo_key = "content"
-        fields = {
+        content_type = old_content_type
+        if old_content_type == ContentType.POLL.value:
+            content_type = ContentType.TEXT.value
+
+        payload = {
             "last_updated_by": update.message.from_user.id,
             "content": update.message.text_html,
-            "content_type": "text" if old_content_type == "poll" else old_content_type,
+            "content_type": content_type,
         }
 
-    db_service.update_entry({"_id": entry["_id"]}, fields)
-    log.log_option_updated(fields, mongo_key, jobname, chat_id)
+    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    log.log_option_updated(payload, mongo_key, jobname, chat_id)
     replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
 
@@ -141,17 +149,17 @@ def handle_edit_poll(update, context):
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service = mongo.MongoService(update)
-    entry = db_service.get_one_entry(chat_id, jobname)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
     poll_json = update.message.poll
-    fields_to_update = {
+    payload = {
         "last_updated_by": update.message.from_user.id,
         "content": jsons.dumps(poll_json),
-        "content_type": "poll",
+        "content_type": ContentType.POLL.value,
     }
-    db_service.update_entry({"_id": entry["_id"]}, fields_to_update)
+    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
-    log.log_option_updated(fields_to_update, "content", jobname, chat_id)
+    log.log_option_updated(payload, "content", jobname, chat_id)
     replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
 
@@ -161,21 +169,21 @@ def handle_add_photo(update, context):
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service = mongo.MongoService(update)
-    entry = db_service.get_one_entry(chat_id, jobname)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
-    fields_to_update = {"last_updated_by": update.message.from_user.id}
+    payload = {"last_updated_by": update.message.from_user.id}
     if entry.get("photo_id", "") == "":
-        fields_to_update["photo_id"] = update.message.photo[-1].file_id
-        fields_to_update["content_type"] = "single_photo"
+        payload["photo_id"] = update.message.photo[-1].file_id
+        payload["content_type"] = ContentType.PHOTO.value
     else:  # photo group
-        fields_to_update["content_type"] = "photo_group"
-        fields_to_update["photo_group_id"] = "-"
+        payload["content_type"] = ContentType.MEDIA.value
+        payload["photo_group_id"] = "-"
         photo_id = update.message.photo[-1].file_id
         photo_ids = "{};{}".format(entry.get("photo_id", ""), photo_id)
-        fields_to_update["photo_id"] = photo_ids
-    db_service.update_entry({"_id": entry["_id"]}, fields_to_update)
+        payload["photo_id"] = photo_ids
+    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
-    log.log_option_updated(fields_to_update, "photo_id", jobname, chat_id)
+    log.log_option_updated(payload, "photo_id", jobname, chat_id)
     replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
 
@@ -190,21 +198,21 @@ def handle_clear_photos(update, context):
 
     if res == "yes":
         db_service = mongo.MongoService(update)
-        entry = db_service.get_one_entry(chat_id, jobname)
+        entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
         if entry.get("photo_id", "") == "":
             replies.send_no_photos_to_delete_error_message(update)
             return ConversationHandler.END
 
-        fields_to_update = {
+        payload = {
             "last_updated_by": update.message.from_user.id,
-            "content_type": "text",
+            "content_type": ContentType.TEXT.value,
             "photo_id": "",
             "photo_group_id": "",
         }
-        db_service.update_entry({"_id": entry["_id"]}, fields_to_update)
+        dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
-        log.log_option_updated(fields_to_update, "photo_id", jobname, chat_id)
+        log.log_option_updated(payload, "photo_id", jobname, chat_id)
         replies.send_attribute_change_success_message(update)
         return ConversationHandler.END
 

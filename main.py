@@ -5,10 +5,9 @@ from telegram.ext import (
     Filters,
     Dispatcher,
     CallbackQueryHandler,
-    ConversationHandler,
 )
 from telegram import Update, Bot
-from bot.convos import edit
+from bot.convos import handlers as convo_handlers
 import config
 from common.log import logger
 from flask import request, Response
@@ -23,25 +22,8 @@ def error(update, context):
 
 def prepare_dispatcher(dp):
     # conversations (must be declared first, not sure why)
-    convo_text_filter = Filters.text & ~Filters.command
-    dp.add_handler(
-        ConversationHandler(
-            entry_points=[CommandHandler("edit", commands.edit_job)],
-            states={
-                edit.state0: [MessageHandler(convo_text_filter, edit.choose_job)],
-                edit.state1: [MessageHandler(convo_text_filter, edit.choose_attribute)],
-                edit.state2: [
-                    MessageHandler(convo_text_filter, edit.handle_edit_content),
-                    MessageHandler(Filters.poll, edit.handle_edit_poll),
-                ],
-                edit.state3: [MessageHandler(Filters.photo, edit.handle_add_photo)],
-                edit.state4: [
-                    MessageHandler(convo_text_filter, edit.handle_clear_photos)
-                ],
-            },
-            fallbacks=[MessageHandler(Filters.command, edit.end_convo)],
-        )
-    )
+    dp.add_handler(convo_handlers.edit_handler)
+    dp.add_handler(convo_handlers.config_chat_handler)
 
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", commands.start))

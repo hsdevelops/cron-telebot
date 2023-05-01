@@ -8,6 +8,8 @@ load_dotenv()
 ENV = getenv("ENV")
 TZ_OFFSET = 8.0  # (UTC+08:00)
 JOB_LIMIT_PER_PERSON = 10
+BOT_NAME = "@cron_telebot"
+
 
 """ Telegram config """
 TELEGRAM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
@@ -20,4 +22,5 @@ MONGODB_DB = "rm_bot"
 MONGODB_JOB_DATA_COLLECTION = "job_data"
 MONGODB_CHAT_DATA_COLLECTION = "chat_data"
 MONGODB_USER_DATA_COLLECTION = "user_data"
+MONGODB_BOT_DATA_COLLECTION = "bot_data"
 MONGODB_USER_WHITELIST_COLLECTION = "whitelist"
