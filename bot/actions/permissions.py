@@ -1,25 +1,28 @@
 from bot.replies import replies
+from common.enums import Restriction
 from database import mongo
+from database.dbutils import dbutils
 
 
 def restrict_to_admins(update, db_service):
     chat_id = update.message.chat.id
 
     db_service = mongo.MongoService(update)
-    entry = db_service.get_chat_entry(chat_id)
+    entry = dbutils.find_chat_by_chatid(db_service, chat_id)
     if entry is None:
         return
 
     current_restriction = entry.get("restriction", "")
 
-    if current_restriction == "administrator":
-        db_service.update_chat_entry(chat_id, {"restriction": ""})
+    if current_restriction == Restriction.ADMIN.value:
+        dbutils.update_chat_entry(db_service, chat_id, {"restriction": ""})
         return replies.send_restrict_success_message(update, "everyone")
 
-    if current_restriction == "creator":
+    if current_restriction == Restriction.OWNER.value:
         return replies.send_wrong_restriction_message(update, "the current bot user")
 
-    db_service.update_chat_entry(chat_id, {"restriction": "administrator"})
+    payload = {"restriction": Restriction.ADMIN.value}
+    dbutils.update_chat_entry(db_service, chat_id, payload)
     return replies.send_restrict_success_message(update, "only group admins")
 
 
@@ -28,19 +31,19 @@ def check_rights(update, context, db_service, must_be_admin=False):
     user_id = message.from_user.id
     group_id = get_chat_id(update, context)
 
-    entry = db_service.get_chat_entry(group_id)
+    entry = dbutils.find_chat_by_chatid(db_service, group_id)
     if entry is None:
         return replies.send_start_message(update)
 
     current_restriction = entry.get("restriction")
     is_creator = str(user_id) == str(entry.get("created_by", ""))
-    if current_restriction == "creator" and not is_creator:
+    if current_restriction == Restriction.OWNER.value and not is_creator:
         replies.send_user_unauthorized_error_message(update, "the current bot user")
         return False
 
-    admin_roles = ["administrator", "creator"]
+    admin_roles = [Restriction.ADMIN.value, Restriction.OWNER.value]
     is_admin = context.bot.get_chat_member(group_id, user_id).status in admin_roles
-    must_be_admin = must_be_admin or current_restriction == "administrator"
+    must_be_admin = must_be_admin or current_restriction == Restriction.ADMIN.value
     if must_be_admin and not is_admin:
         replies.send_user_unauthorized_error_message(update, "group admins")
         return False
@@ -51,7 +54,7 @@ def check_rights(update, context, db_service, must_be_admin=False):
 def restrict_to_user(update, db_service):
     # user running this command must be creator
     chat_id = update.message.chat.id
-    entry = db_service.get_chat_entry(chat_id)
+    entry = dbutils.find_chat_by_chatid(db_service, chat_id)
     if entry is None:
         return
 
@@ -61,14 +64,16 @@ def restrict_to_user(update, db_service):
         return
 
     current_restriction = entry.get("restriction", "")
-    if current_restriction == "administrator":
+    if current_restriction == Restriction.ADMIN.value:
         return replies.send_wrong_restriction_message(update, "group admins")
 
-    if current_restriction == "creator":
-        db_service.update_chat_entry(chat_id, {"restriction": ""})
+    if current_restriction == Restriction.OWNER.value:
+        dbutils.update_chat_entry(db_service, chat_id, {"restriction": ""})
         return replies.send_restrict_success_message(update, "everyone")
 
-    db_service.update_chat_entry(chat_id, {"restriction": "creator"})
+    dbutils.update_chat_entry(
+        db_service, chat_id, {"restriction": Restriction.OWNER.value}
+    )
     return replies.send_restrict_success_message(update, "only you")
 
 

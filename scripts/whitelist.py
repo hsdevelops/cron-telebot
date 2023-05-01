@@ -4,7 +4,6 @@ import config
 import certifi
 from common import utils
 from pymongo import MongoClient
-from datetime import datetime, timedelta, timezone
 
 
 """
