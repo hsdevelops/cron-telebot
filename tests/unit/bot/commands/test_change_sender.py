@@ -1,47 +1,27 @@
 from unittest import mock
 import pytest
-from telegram import Message
 
 from bot.commands import change_sender
-from bot.replies import replies
-import config
 from bot.convos import config_chat
 
 
-@pytest.fixture
-def mock_chat():
-    return {
-        "chat_id": 1,
-        "chat_title": 1,
-        "chat_type": "group",
-        "tz_offset": 8,
-        "utc_tz": 8,
-        "created_by": 1,
-        "telegram_ts": 1,
-        "restriction": "",
-    }
-
-
-@mock.patch("telegram.Message.reply_text")
-def test_change_sender(reply, mongo_service, simple_update, mock_chat):
-    mongo_service.insert_new_chat(mock_chat)
-
+@mock.patch("bot.replies.replies.send_choose_chat_message")
+def test_change_sender(send_msg, mongo_service, simple_update, mock_group):
+    mongo_service.insert_new_chat(mock_group)
     res = change_sender(simple_update, None)
     assert res == config_chat.state0
-    reply.assert_called_with(replies.choose_chat_message, reply_markup=mock.ANY)
+    send_msg.assert_called_once()
 
 
 @pytest.mark.usefixtures("mongo_service")
-@mock.patch("telegram.Message.reply_text")
-def test_invalid_chat_type(reply, simple_group_update):
-    res = change_sender(simple_group_update, None)
-    assert res is None
-    reply.assert_called_with(replies.private_only_error_message % config.BOT_NAME)
+@mock.patch("bot.replies.replies.send_private_only_error_message")
+def test_invalid_chat_type(send_msg, simple_group_update):
+    change_sender(simple_group_update, None)
+    send_msg.assert_called_once()
 
 
 @pytest.mark.usefixtures("mongo_service")
-@mock.patch("telegram.Message.reply_text")
-def test_missing_chat(reply: Message.reply_text, simple_update):
-    res = change_sender(simple_update, None)
-    assert res is None
-    reply.assert_called_with(replies.missing_chats_error_message % config.BOT_NAME)
+@mock.patch("bot.replies.replies.send_missing_chats_error_message")
+def test_missing_chat(send_msg, simple_update):
+    change_sender(simple_update, None)
+    send_msg.assert_called_once()

@@ -14,7 +14,7 @@ from common.enums import ContentType
 
 # custom messages
 start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"  # html
-help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/addmultiple - add multiple jobs\n/edit - edit job details\n/list - list active jobs\n/delete - delete a job\n/reset - delete all jobs\n/changetz - edit timezone\n/options - edit permissions (only for groups)\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Feeling lost?</b>\nRefer to our <a href="https://github.com/hsdevelops/rm-bot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at <a href="http://mailto:hs.develops.1@gmail.com/">hs.develops.1@gmail.com</a>.\n\n<b>Enjoying the bot?</b>\nYou can <a href="https://www.buymeacoffee.com/rmteam">buy the RM team a coffee</a>!'  # html
+help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/addmultiple - add multiple jobs\n/edit - edit job details\n/list - list active jobs\n/delete - delete a job\n/reset - delete all jobs\n/changetz - edit timezone\n/changesender - change sender for group\n/options - edit permissions for group\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Feeling lost?</b>\nRefer to our <a href="https://github.com/hsdevelops/rm-bot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at <a href="http://mailto:hs.develops.1@gmail.com/">hs.develops.1@gmail.com</a>.\n\n<b>Enjoying the bot?</b>\nYou can <a href="https://www.buymeacoffee.com/rmteam">buy the RM team a coffee</a>!'  # html
 delete_message = "Hey, tell me the name of the job you want to delete. Get /list of available jobs.\n\n(swipe left to reply to this message)"
 request_jobname_message = (
     "Give me your job name\n\n(swipe left to reply to this message)"
@@ -51,11 +51,11 @@ reset_photos_confirmation_message = "This will clear ALL photos for this job. Pr
 
 def prepare_keyboard(entries, field="jobname"):
     keyboard = []
-    for i, row in enumerate(entries):
+    for i, entry in enumerate(entries):
         if i % 2 == 0:
-            keyboard.append([row[field]])
+            keyboard.append([entry[field]])
             continue
-        keyboard[len(keyboard) - 1].append(row[field])
+        keyboard[len(keyboard) - 1].append(entry[field])
     return keyboard
 
 

@@ -52,6 +52,7 @@ def add_chat_data(
         "created_by": created_by,
         "telegram_ts": utils.parse_time_millis(telegram_ts),
         "restriction": "",
+        "user_bot_token": None,
     }
     db_service.insert_new_chat(new_doc)
     log.log_new_chat(chat_id, chat_title)

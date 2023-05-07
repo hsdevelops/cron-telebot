@@ -6,7 +6,7 @@ from database import mongo
 from database.dbutils import dbutils
 from cron_descriptor import get_description
 from teleapi import endpoints as teleapi
-from bot.actions.permissions import check_rights
+from bot.actions.permissions import *
 from bot.actions.readonly import *
 from bot.actions.removals import *
 
@@ -350,6 +350,9 @@ def update_timezone(update, context):
     # retrieve current chat data
     chat_id = update.message.chat.id
     chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id)
+    if chat_entry is None:
+        return replies.send_start_message(update)
+
     if tz_offset == chat_entry.get("tz_offset", ""):
         return replies.send_timezone_nochange_error_message(update)
 
@@ -364,7 +367,7 @@ def update_timezone(update, context):
     # update job entries
     job_entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     for job_entry in job_entries:
-        if job_entry("nextrun_ts", "") == "":
+        if job_entry.get("nextrun_ts", "") == "":
             continue
         crontab = job_entry.get("crontab", "")
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, tz_offset)

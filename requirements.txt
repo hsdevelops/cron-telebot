@@ -26,6 +26,7 @@ itsdangerous==2.1.2
 Jinja2==3.1.2
 jsons==1.6.3
 MarkupSafe==2.1.1
+mongomock==4.1.2
 mypy-extensions==0.4.3
 numpy
 oauthlib==3.2.0
@@ -42,6 +43,7 @@ pyasn1-modules==0.2.8
 pymongo==4.2.0
 pyparsing==3.0.8
 pytest==7.2.0
+pytest-mock==3.10.0
 python-dateutil==2.8.2
 python-dotenv==0.20.0
 python-telegram-bot==13.11
@@ -50,6 +52,7 @@ pytz-deprecation-shim==0.1.0.post0
 requests==2.27.1
 requests-oauthlib==1.3.1
 rsa==4.8
+sentinels==1.0.0
 six==1.16.0
 sniffio==1.3.0
 Telethon==1.25.4

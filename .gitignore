@@ -1,12 +1,14 @@
 .DS_Store
+.vscode
+.pytest_cache
+__pycache__
+
 venv/
-tests/integration
 scripts/
 tmp/
+tests/integration
 
 bot.session
 keys.json
-
-__pycache__
 photo-*
-.*
+.env

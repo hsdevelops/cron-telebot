@@ -26,15 +26,13 @@ def run():
         return Response(status=200)
 
     q = []
-    for row in entries:
-        # process_job(db_service, row, parsed_time)
+    for entry in entries:
         args = (
             db_service,
-            row,
+            entry,
             parsed_time,
         )
-        t = Thread(target=process_job, args=args)
-        t.daemon = True
+        t = Thread(target=process_job, args=args, daemon=True)
         t.start()
         q.append(t)
 
@@ -45,26 +43,27 @@ def run():
     return Response(status=200)
 
 
-def process_job(db_service: mongo.MongoService, row, parsed_time):
-    channel_id = row.get("channel_id", "")
-    chat_id = row.get("chat_id", "")
+def process_job(db_service: mongo.MongoService, entry, parsed_time):
+    job_id = entry["_id"]
+    channel_id = entry.get("channel_id", "")
+    chat_id = entry.get("chat_id", "")
     if channel_id != "":
         chat_id = channel_id
-    content = row.get("content", "")
-    content_type = row.get("content_type", "")
-    photo_id = row.get("photo_id", "")
-    photo_group_id = str(row.get("photo_group_id", ""))
-    crontab = row.get("crontab", "")
-    previous_message_id = str(row.get("previous_message_id", ""))
+    content = entry.get("content", "")
+    content_type = entry.get("content_type", "")
+    photo_id = entry.get("photo_id", "")
+    photo_group_id = str(entry.get("photo_group_id", ""))
+    crontab = entry.get("crontab", "")
+    previous_message_id = str(entry.get("previous_message_id", ""))
 
-    user_bot_token = row.get("user_bot_token")
+    user_bot_token = entry.get("user_bot_token")
     if user_bot_token is None:
         user_bot_token = config.TELEGRAM_BOT_TOKEN
 
     bot_message_id, err = send_message(
-        chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
+        job_id, chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
     )
-    if row.get("option_delete_previous", "") != "" and previous_message_id != "":
+    if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
         teleapi.delete_message(chat_id, previous_message_id, user_bot_token)
 
     # calculate and update next run time
@@ -79,11 +78,11 @@ def process_job(db_service: mongo.MongoService, row, parsed_time):
         "remarks": "" if err is None else err,
         "removed_ts": "" if err is None else parsed_time,
     }
-    dbutils.update_entry_by_jobname(db_service, row, payload)
+    dbutils.update_entry_by_jobname(db_service, entry, payload)
 
 
 def send_message(
-    chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
+    job_id, chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
 ):
     if photo_group_id != "":  # media group
         resp = teleapi.send_media_group(chat_id, photo_id, content, user_bot_token)
@@ -94,7 +93,7 @@ def send_message(
     else:  # text message
         resp = teleapi.send_text(chat_id, content, user_bot_token)
 
-    log.log_api_send_message(chat_id, content, resp.status_code)
+    log.log_api_send_message(job_id, chat_id, resp.status_code)
 
     if resp.status_code != 200:
         return "", "Error {}: {}".format(resp.status_code, resp.json()["description"])

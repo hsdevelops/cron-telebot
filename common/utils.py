@@ -19,9 +19,7 @@ def calc_next_run(crontab, user_tz_offset):
 
 
 def extract_tz_values(text):
-    return re.match(
-        "^(?:UTC)?(([+-])(2[0-3]|[01][0-9]|[0-9])(?::([0-5][0-9]))?)$", text
-    )
+    return re.match("^(?:UTC)?(([+-])(1[0-4]|0[0-9]|[0-9])(?::([0-5][0-9]))?)$", text)
 
 
 def extract_jobs(text):

@@ -3,7 +3,7 @@ from telegram.ext import ConversationHandler
 from bot.replies import replies
 from database import mongo
 from database.dbutils import dbutils
-from common import log
+from common import log, utils
 import teleapi.endpoints as teleapi
 
 
@@ -48,7 +48,12 @@ def update_sender(update, context):
         return state1
 
     db_service = mongo.MongoService(update)
-    bot_data = {"token": new_token, **resp.json()["result"]}
+    bot_data = {
+        **resp.json()["result"],
+        "token": new_token,
+        "created_by": user_id,
+        "updated_at": utils.now(),
+    }
     dbutils.upsert_new_bot(db_service, user_id, bot_data)
 
     chat_id, chat_title = context.user_data["chat_id"], context.user_data["chat_title"]

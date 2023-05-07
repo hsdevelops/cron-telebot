@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # bot
 def log_new_job_added(update):
     logger.info(
-        '[BOT] User "%s" successfully added new job "%s" in room "%s", chat_id=%s',
+        '[BOT] User "%s" added new job "%s" in room "%s", chat_id=%s',
         update.message.from_user.id,
         update.message.text,
         update.message.chat.title,
@@ -20,7 +20,7 @@ def log_new_job_added(update):
 
 def log_new_jobs_added(update, jobs_string):
     logger.info(
-        '[BOT] User "%s" successfully added several jobs "%s" in room "%s", chat_id=%s',
+        '[BOT] User "%s" added several jobs "%s" in room "%s", chat_id=%s',
         update.message.from_user.id,
         jobs_string,
         update.message.chat.title,
@@ -30,20 +30,20 @@ def log_new_jobs_added(update, jobs_string):
 
 def log_new_channel_job_added(update):
     logger.info(
-        '[BOT] User "%s" successfully added new job/content for a channel, chat_id=%s',
+        '[BOT] User "%s" added new job/content for a channel, chat_id=%s',
         update.message.from_user.id,
         update.message.chat.id,
     )
 
 
 def log_new_content_added(last_updated_by, jobname, chat_id):
-    msg = '[BOT] User "%s" successfully added new message content for job "%s", chat_id=%s'
+    msg = '[BOT] User "%s" added new message content for job "%s", chat_id=%s'
     logger.info(msg, last_updated_by, jobname, chat_id)
 
 
 def log_new_channel_jobname_added(entry):
     logger.info(
-        '[BOT] User "%s" successfully added jobname "%s" in channel, channel_id=%s, chat_id=%s',
+        '[BOT] User "%s" added jobname "%s" in channel, channel_id=%s, chat_id=%s',
         entry.get("last_updated_by"),
         entry.get("jobname"),
         entry.get("channel_id"),
@@ -52,23 +52,23 @@ def log_new_channel_jobname_added(entry):
 
 
 def log_bot_updated(user_id, bot_data):
-    msg = '[BOT] User "%s" successfully upserted bot "%s"'
+    msg = '[BOT] User "%s" upserted bot "%s"'
     logger.info(msg, user_id, bot_data.get("username"))
 
 
 def log_crontab_updated(last_updated_by, jobname, chat_id):
-    msg = '[BOT] User "%s" successfully added new crontab for job "%s", chat_id=%s'
+    msg = '[BOT] User "%s" added new crontab for job "%s", chat_id=%s'
     logger.info(msg, last_updated_by, jobname, chat_id)
 
 
 def log_job_removed(last_updated_by, jobname, chat_id):
-    msg = '[BOT] User "%s" successfully removed job "%s", chat_id=%s'
+    msg = '[BOT] User "%s" removed job "%s", chat_id=%s'
     logger.info(msg, last_updated_by, jobname, chat_id)
 
 
 def log_option_updated(updated_fields, option, jobname, chat_id):
     logger.info(
-        '[BOT] User "%s" successfully updated option "%s" to "%s" for job "%s", chat_id=%s',
+        '[BOT] User "%s" updated option "%s" to "%s" for job "%s", chat_id=%s',
         updated_fields["last_updated_by"],
         option,
         updated_fields[option],
@@ -84,7 +84,7 @@ def log_sender_updated(user_id, prev_sender, new_sender, chat_id):
 
 def log_chat_reset(update):
     logger.info(
-        '[BOT] User "%s" successfully reset chat, chat_id=%s',
+        '[BOT] User "%s" reset chat, chat_id=%s',
         update.callback_query.from_user.id,
         update.callback_query.message.chat_id,
     )
@@ -151,14 +151,14 @@ def log_api_previous_message_deletion(chat_id, message_id, status_code):
     logger.info(msg, status_code, chat_id, message_id)
 
 
-def log_api_send_message(chat_id, content, status_code):
-    msg = '[TELEGRAM API] Sent message, response_status=%s, chat_id=%s, message="%s"'
-    logger.info(msg, status_code, chat_id, content)
+def log_api_send_message(job_id, chat_id, status_code):
+    msg = '[TELEGRAM API] Sent message, job_id="%s", chat_id=%s, response_status=%s'
+    logger.info(msg, job_id, chat_id, status_code)
 
 
 def log_entry_count(count):
-    logger.info("Processing %d message(s) to send this time...", count)
+    logger.info("[TELEGRAM API] Processing %d message(s) to send this time...", count)
 
 
 def log_completion(total_count):
-    logger.info("Finished processing %d messages", total_count)
+    logger.info("[TELEGRAM API] Finished processing %d messages", total_count)

@@ -6,21 +6,6 @@ from bot.convos.config_chat import *
 
 
 @pytest.fixture
-def mock_chat():
-    return {
-        "chat_id": 1,
-        "chat_title": "test_group",
-        "chat_type": "group",
-        "tz_offset": 8,
-        "utc_tz": 8,
-        "created_by": 1,
-        "telegram_ts": 1,
-        "restriction": "",
-        "user_bot_token": 1,
-    }
-
-
-@pytest.fixture
 def mock_job():
     return {
         "chat_id": 1,
@@ -49,48 +34,52 @@ State 0
 """
 
 
-@mock.patch("telegram.Message.reply_text")
-def test_choose_chat_no_chat(reply, simple_update):
+@pytest.mark.usefixtures("mongo_service")
+@mock.patch("bot.replies.replies.send_error_message")
+def test_choose_chat_no_chat(send_msg, simple_update):
     res = choose_chat(simple_update, None)
     assert res == state0
-    reply.assert_called_once_with(replies.error_message)
+    send_msg.assert_called_once()
 
 
-@mock.patch("telegram.Message.reply_text")
+@mock.patch("bot.replies.replies.send_prompt_user_bot_message")
 def test_choose_chat_no_user_token(
-    reply, mongo_service, mock_chat, simple_update, simple_context
+    send_msg, mongo_service, mock_group, simple_update, simple_context
 ):
-    del mock_chat["user_bot_token"]
-    mongo_service.insert_new_chat(mock_chat)
+    mongo_service.insert_new_chat(mock_group)
 
     simple_update.message.text = "test_group"
     res = choose_chat(simple_update, simple_context)
     assert res == state1
-    expected_reply = replies.prompt_user_bot_message
-    reply.assert_called_once_with(expected_reply, reply_markup=mock.ANY)
+    send_msg.assert_called_once()
 
 
-@mock.patch("telegram.Message.reply_text")
+@mock.patch("bot.replies.replies.send_prompt_user_bot_message")
 def test_choose_chat_none_user_token(
-    reply, mongo_service, mock_chat, simple_update, simple_context
+    send_msg, mongo_service, mock_group, simple_update, simple_context
 ):
-    mock_chat["user_bot_token"] = None
-    mongo_service.insert_new_chat(mock_chat)
+    mock_group["user_bot_token"] = None
+    mongo_service.insert_new_chat(mock_group)
 
     simple_update.message.text = "test_group"
     res = choose_chat(simple_update, simple_context)
     assert res == state1
-    expected_reply = replies.prompt_user_bot_message
-    reply.assert_called_once_with(expected_reply, reply_markup=mock.ANY)
+    send_msg.assert_called_once()
 
 
-@mock.patch("telegram.Message.reply_text")
+@mock.patch("bot.replies.replies.send_sender_reset_success_message")
 def test_choose_chat_existing_user_token(
-    reply, mongo_service, mock_chat, mock_job, mock_job2, simple_update, simple_context
+    send_msg,
+    mongo_service,
+    mock_group,
+    mock_job,
+    mock_job2,
+    simple_update,
+    simple_context,
 ):
-    mock_chat["user_bot_token"] = 1
+    mock_group["user_bot_token"] = 1
     mock_job["user_bot_token"] = 1
-    mongo_service.insert_new_chat(mock_chat)
+    mongo_service.insert_new_chat(mock_group)
     mongo_service.insert_new_entry(mock_job)
     mongo_service.insert_new_entry(mock_job2)
 
@@ -98,8 +87,7 @@ def test_choose_chat_existing_user_token(
     res = choose_chat(simple_update, simple_context)
     assert res == ConversationHandler.END
 
-    expected_reply = replies.sender_reset_success_message
-    reply.assert_called_once_with(expected_reply, reply_markup=mock.ANY)
+    send_msg.assert_called_once()
 
     res = mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res["user_bot_token"] is None
@@ -124,35 +112,36 @@ class MockResponse:
         return self.json_data
 
 
-@mock.patch("telegram.Message.reply_text")
-def test_update_sender_invalid_bot(reply, simple_update, simple_context):
+@mock.patch("bot.replies.replies.send_error_message")
+def test_update_sender_invalid_bot(send_msg, simple_update, simple_context):
     simple_update.message.text = "some_token"
     res = update_sender(simple_update, simple_context)
     assert res == state1
-    reply.assert_called_once_with(replies.error_message)
+    send_msg.assert_called_once()
 
 
-@mock.patch("telegram.Message.reply_text")
+@mock.patch("bot.replies.replies.send_sender_change_success_message")
 def test_update_sender_valid_bot(
-    reply,
+    send_msg,
     mocker,
     mongo_service,
     simple_update,
     simple_context,
-    mock_chat,
+    mock_group,
     mock_job,
     mock_job2,
 ):
     mock_resp = MockResponse({"result": {"id": 1, "username": "test_bot"}}, 200)
     mocker.patch("bot.convos.config_chat.get_bot_details", return_value=mock_resp)
 
-    mongo_service.insert_new_chat(mock_chat)
+    mock_group["user_bot_token"] = 1
+    mongo_service.insert_new_chat(mock_group)
     mongo_service.insert_new_entry(mock_job)
     mongo_service.insert_new_entry(mock_job2)
 
     simple_update.message.text = "some_token"
-    simple_context.user_data["chat_id"] = mock_chat["chat_id"]
-    simple_context.user_data["chat_title"] = mock_chat["chat_title"]
+    simple_context.user_data["chat_id"] = mock_group["chat_id"]
+    simple_context.user_data["chat_title"] = mock_group["chat_title"]
     res = update_sender(simple_update, simple_context)
     assert res == ConversationHandler.END
 
@@ -160,12 +149,12 @@ def test_update_sender_valid_bot(
     assert res is not None
     assert res["token"] == "some_token"
 
-    res = mongo_service.find_one_chat_entry({"chat_id": mock_chat["chat_id"]})
+    res = mongo_service.find_one_chat_entry({"chat_id": mock_group["chat_id"]})
     assert res["user_bot_token"] == "some_token"
 
-    res = mongo_service.find_entries({"chat_id": mock_chat["chat_id"]})
+    res = mongo_service.find_entries({"chat_id": mock_group["chat_id"]})
     assert len(res) == 2
     assert res[0]["user_bot_token"] == "some_token"
     assert res[1]["user_bot_token"] == "some_token"
 
-    reply.assert_called_once()
+    send_msg.assert_called_once()

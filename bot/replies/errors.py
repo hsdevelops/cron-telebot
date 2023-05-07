@@ -21,7 +21,7 @@ convo_unauthorized_message = (
 no_photos_to_delete_error_message = "No photos to delete. Ending conversation..."
 attribute_change_error_message = "Something went wrong on the server... Please contact the bot owner at hs.develops.1@gmail.com."
 private_only_error_message = "This command can only be run in private chat with %s"
-missing_chats_error_message = "Please add %s to a group or create a job for a channel"
+missing_chats_error_message = "Please add and set up %s in a group"
 missing_bot_in_group_message = "Terminating conversation... \n\nPlease add bot into the group as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>\nbefore running /changesender."
 
 
