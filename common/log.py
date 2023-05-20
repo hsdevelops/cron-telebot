@@ -162,3 +162,8 @@ def log_entry_count(count):
 
 def log_completion(total_count):
     logger.info("[TELEGRAM API] Finished processing %d messages", total_count)
+
+
+# prometheus
+def log_update_prometheus(metric, value):
+    logger.info(f"[PROMETHEUS] Updated Prometheus, metric={metric}, value={value}")

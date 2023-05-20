@@ -5,6 +5,7 @@ __pycache__
 
 venv/
 scripts/
+prometheus/
 tmp/
 tests/integration
 

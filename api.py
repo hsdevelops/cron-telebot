@@ -1,3 +1,5 @@
+import gc, psutil
+from prometheus_client import Gauge, generate_latest
 from common import log, utils
 from common.enums import ContentType
 from database import mongo
@@ -6,9 +8,28 @@ from flask import Flask, Response
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from threading import Thread
+from prometheus_flask_exporter import PrometheusMetrics
+
 import config
 
 app = Flask(__name__)
+metrics = PrometheusMetrics(app)
+cpu_usage = Gauge("cpu_usage", "CPU Usage")
+memory_usage = Gauge("memory_usage", "Memory Usage")
+
+
+@app.route("/metricz")
+def prom_endpoint():
+    cpu_percent = psutil.cpu_percent()
+    memory_percent = psutil.virtual_memory().percent
+
+    cpu_usage.set(cpu_percent)
+    memory_usage.set(memory_percent)
+
+    log.log_update_prometheus("cpu_usage", cpu_percent)
+    log.log_update_prometheus("memory_usage", memory_percent)
+
+    return Response(generate_latest(), mimetype="text/plain")
 
 
 @app.route("/api", methods=["GET", "POST"])
@@ -23,6 +44,7 @@ def run():
 
     if len(entries) < 1:
         log.log_completion(0)
+        gc.collect()
         return Response(status=200)
 
     q = []
@@ -39,6 +61,7 @@ def run():
     for t in q:
         t.join()
 
+    gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
     log.log_completion(len(entries))
     return Response(status=200)
 
