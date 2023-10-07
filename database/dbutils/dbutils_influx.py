@@ -9,7 +9,7 @@ client = InfluxDBClient3(
     database=config.INFLUXDB_BUCKET,
 )
 
-measurement = "metrics"
+measurement = "raw"
 field = "message_count"
 
 def save_msg_count(message_count):
