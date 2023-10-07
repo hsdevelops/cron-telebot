@@ -40,9 +40,10 @@ def run():
     parsed_time = utils.parse_time_mins(now)
     entries = dbutils.find_entries_by_nextrun(db_service, parsed_time)
 
-    log.log_entry_count(len(entries))
+    entry_count = len(entries)
+    log.log_entry_count(entry_count)
 
-    if len(entries) < 1:
+    if entry_count < 1:
         log.log_completion(0)
         gc.collect()
         return Response(status=200)
@@ -62,7 +63,8 @@ def run():
         t.join()
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
-    log.log_completion(len(entries))
+    dbutils.save_msg_count(entry_count)
+    log.log_completion(entry_count)
     return Response(status=200)
 
 

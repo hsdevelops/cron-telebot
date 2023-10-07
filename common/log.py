@@ -167,3 +167,8 @@ def log_completion(total_count):
 # prometheus
 def log_update_prometheus(metric, value):
     logger.info(f"[PROMETHEUS] Updated Prometheus, metric={metric}, value={value}")
+
+
+# influx
+def log_influx_resp(measurement, field, value):
+    logger.info(f"[INFLUX] Updated influx, measurement={measurement}, field={field}, value={value}")
