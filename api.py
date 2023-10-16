@@ -85,9 +85,12 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
     if user_bot_token is None:
         user_bot_token = config.TELEGRAM_BOT_TOKEN
 
-    bot_message_id, err = send_message(
+    bot_message_id, status, err = send_message(
         job_id, chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
     )
+    if status == 429:  # try again in one minute
+        return
+
     if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
         teleapi.delete_message(chat_id, previous_message_id, user_bot_token)
 
@@ -120,14 +123,17 @@ def send_message(
 
     log.log_api_send_message(job_id, chat_id, resp.status_code)
 
-    if resp.status_code != 200:
-        return "", "Error {}: {}".format(resp.status_code, resp.json()["description"])
+    if resp.status_code == 429:
+        return "", resp.status_code, None
+    elif resp.status_code != 200:
+        err_msg = "Error {}: {}".format(resp.status_code, resp.json()["description"])
+        return "", resp.status_code, err_msg
 
     if photo_group_id != "":
         msg_ids = [str(message["message_id"]) for message in resp.json()["result"]]
-        return ";".join(msg_ids), None
+        return ";".join(msg_ids), resp.status_code, None
 
-    return resp.json()["result"]["message_id"], None
+    return resp.json()["result"]["message_id"], resp.status_code, None
 
 
 if __name__ == "__main__":
