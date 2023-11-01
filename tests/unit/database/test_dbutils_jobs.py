@@ -51,6 +51,7 @@ def mock_jobs():
             "paused_ts": "2012-02-11 08:22:00",
             "removed_ts": "",
             "nextrun_ts": "2012-02-11 08:22:00",
+            "remarks": "",
         },
         {
             "_id": 6,
@@ -60,6 +61,7 @@ def mock_jobs():
             "created_ts": 1,
             "removed_ts": "2012-02-11 08:22:00",
             "nextrun_ts": "2012-02-11 08:22:00",
+            "remarks": "Error 400",
         },
     ]
 
@@ -87,6 +89,25 @@ def test_find_entry_by_jobname(mongo_service, mock_jobs):
 
     res = dbutils_job.find_entry_by_jobname(mongo_service, 1, "test_job_4", False)
     assert res is None
+
+
+def test_find_entries_removed_between(mongo_service, mock_jobs):
+    mongo_service.main_collection.insert_many(mock_jobs)
+
+    res = dbutils_job.find_entries_removed_between(
+        mongo_service, "2012-02-10", "2012-02-12"
+    )
+    assert len(res) == 2
+
+    res = dbutils_job.find_entries_removed_between(
+        mongo_service, "2012-02-10", "2012-02-12", 400
+    )
+    assert len(res) == 1
+
+    res = dbutils_job.find_entries_removed_between(
+        mongo_service, "2012-02-12", "2012-02-13"
+    )
+    assert len(res) == 0
 
 
 def test_find_entries_by_nextrun(mongo_service, mock_jobs):

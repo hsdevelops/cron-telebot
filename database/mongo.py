@@ -3,13 +3,14 @@ from common import utils
 from pymongo import MongoClient
 from database.dbutils.dbutils_user import sync_user_data
 
+
 # define service
 class MongoService:
-    def __init__(self, update=None):
+    def __init__(self, update=None, conn_str=config.MONGODB_CONNECTION_STRING):
         # Provide the mongodb atlas url to connect python to mongodb using pymongo
 
         # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
-        client = MongoClient(config.MONGODB_CONNECTION_STRING)
+        client = MongoClient(conn_str)
         db = client[config.MONGODB_DB]
         self.main_collection = db[config.MONGODB_JOB_DATA_COLLECTION]
         self.chat_data_collection = db[config.MONGODB_CHAT_DATA_COLLECTION]
@@ -41,7 +42,6 @@ class MongoService:
         return self.main_collection.update_many(q, {"$set": update})
 
     def update_entry(self, q, update):
-        q["removed_ts"] = ""
         update["last_update_ts"] = utils.now()
         return self.main_collection.update_one(q, {"$set": update})
 

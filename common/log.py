@@ -145,6 +145,12 @@ def log_firstname_updated(update):
     )
 
 
+def log_update_details(result):
+    logger.info(
+        f"[DB] Updated mongo, matched={result.matched_count}, modified={result.modified_count}",
+    )
+
+
 # api
 def log_api_previous_message_deletion(chat_id, message_id, status_code):
     msg = "[TELEGRAM API] Deleted previous message, response_status=%s, chat_id=%s, message_id=%s"
@@ -171,4 +177,11 @@ def log_update_prometheus(metric, value):
 
 # influx
 def log_influx_resp(measurement, field, value):
-    logger.info(f"[INFLUX] Updated influx, measurement={measurement}, field={field}, value={value}")
+    logger.info(
+        f"[INFLUX] Updated influx, measurement={measurement}, field={field}, value={value}"
+    )
+
+
+# script
+def log_update_count(count):
+    logger.info("[SCRIPT] Processing %d message(s) to revive...", count)

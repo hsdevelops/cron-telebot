@@ -27,6 +27,15 @@ def find_entry_by_jobname(
     return db_service.find_one_entry(q)
 
 
+def find_entries_removed_between(
+    db_service: MongoService, start_ts, end_ts, err_status=None
+):
+    q = {"removed_ts": {"$gte": start_ts, "$lte": end_ts}}
+    if err_status is not None:
+        q["remarks"] = {"$regex": f"^Error {err_status}"}
+    return db_service.find_entries(q)
+
+
 def find_entries_by_nextrun(db_service: MongoService, ts):
     base_q = {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
     q = {
@@ -113,12 +122,17 @@ def update_entry_by_jobname(db_service: MongoService, entry, update):
         "created_ts": entry["created_ts"],
         "chat_id": entry["chat_id"],
         "jobname": entry["jobname"],
+        "removed_ts": "",
     }
     return db_service.update_entry(q, update)
 
 
-def update_entry_by_jobid(db_service: MongoService, entry_id, update):
+def update_entry_by_jobid(
+    db_service: MongoService, entry_id, update, include_removed=False
+):
     q = {"_id": entry_id}
+    if not include_removed:
+        q["removed_ts"] = ""
     return db_service.update_entry(q, update)
 
 

@@ -4,7 +4,8 @@
 __pycache__
 
 venv/
-scripts/
+logs/
+scripts/*
 prometheus/
 tmp/
 tests/integration
@@ -13,3 +14,5 @@ bot.session
 keys.json
 photo-*
 .env
+
+!scripts/revive.py

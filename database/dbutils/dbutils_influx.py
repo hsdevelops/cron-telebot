@@ -12,6 +12,7 @@ client = InfluxDBClient3(
 measurement = "raw"
 field = "message_count"
 
+
 def save_msg_count(message_count):
     point = Point(measurement).field(field, message_count)
     client.write(record=point)
