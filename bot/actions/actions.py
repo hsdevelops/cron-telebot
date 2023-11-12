@@ -40,6 +40,7 @@ def add_new_job(update, context):
         jobname=msg.text,
         user_id=msg.from_user.id,
         user_bot_token=chat_entry.get("user_bot_token"),
+        message_thread_id=msg.message_thread_id if msg.is_topic_message else None,
     )
     replies.send_request_text_message(update)
     log.log_new_job_added(update)
@@ -131,6 +132,7 @@ def add_new_channel_job(update, poll=False):
         photo_id=photo_id,
         photo_group_id=photo_group_id,
         user_bot_token=chat_entry.get("user_bot_token"),
+        message_thread_id=None,
     )
 
     log.log_new_channel_job_added(update)
@@ -169,6 +171,7 @@ def add_new_jobs(update, context):
             continue
 
         jobname = generate_jobname(db_service, update.message.chat.type, chat_id)
+        msg = update.message
         dbutils.add_new_entry(
             db_service,
             chat_id=chat_id,
@@ -180,6 +183,7 @@ def add_new_jobs(update, context):
             nextrun_ts=db_nextrun,
             user_nextrun_ts=user_nextrun,
             user_bot_token=chat_entry.get("user_bot_token"),
+            message_thread_id=msg.message_thread_id if msg.is_topic_message else None,
         )
 
         successful_creation.append("%s: (%s) %s" % (jobname, crontab, text_content))

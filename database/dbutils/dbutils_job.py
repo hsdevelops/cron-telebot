@@ -91,6 +91,7 @@ def add_new_entry(
     nextrun_ts="",
     user_nextrun_ts="",
     user_bot_token=None,
+    message_thread_id=None,
 ):
     db_service.insert_new_entry(
         {
@@ -111,6 +112,7 @@ def add_new_entry(
             "removed_ts": "",
             "remarks": "",
             "user_bot_token": user_bot_token,
+            "message_thread_id": message_thread_id,
         }
     )
 
