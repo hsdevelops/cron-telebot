@@ -21,7 +21,7 @@ gunicorn==20.1.0
 h11==0.14.0
 httpcore
 httplib2==0.20.4
-httpx==0.25.1
+httpx
 idna==3.3
 importlib-metadata==4.11.3
 influxdb3-python==0.3.0
