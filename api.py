@@ -80,13 +80,21 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
     photo_group_id = str(entry.get("photo_group_id", ""))
     crontab = entry.get("crontab", "")
     previous_message_id = str(entry.get("previous_message_id", ""))
+    message_thread_id = entry.get("message_thread_id", None)
 
     user_bot_token = entry.get("user_bot_token")
     if user_bot_token is None:
         user_bot_token = config.TELEGRAM_BOT_TOKEN
 
     bot_message_id, status, err = send_message(
-        job_id, chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
+        job_id,
+        chat_id,
+        content,
+        content_type,
+        photo_id,
+        photo_group_id,
+        user_bot_token,
+        message_thread_id,
     )
     if status == 429:  # try again in one minute
         return
@@ -110,16 +118,27 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
 
 
 def send_message(
-    job_id, chat_id, content, content_type, photo_id, photo_group_id, user_bot_token
+    job_id,
+    chat_id,
+    content,
+    content_type,
+    photo_id,
+    photo_group_id,
+    user_bot_token,
+    message_thread_id,
 ):
     if photo_group_id != "":  # media group
-        resp = teleapi.send_media_group(chat_id, photo_id, content, user_bot_token)
+        resp = teleapi.send_media_group(
+            chat_id, photo_id, content, user_bot_token, message_thread_id
+        )
     elif photo_id != "":  # single photo
-        resp = teleapi.send_single_photo(chat_id, photo_id, content, user_bot_token)
+        resp = teleapi.send_single_photo(
+            chat_id, photo_id, content, user_bot_token, message_thread_id
+        )
     elif content_type == ContentType.POLL.value:
-        resp = teleapi.send_poll(chat_id, content, user_bot_token)
+        resp = teleapi.send_poll(chat_id, content, user_bot_token, message_thread_id)
     else:  # text message
-        resp = teleapi.send_text(chat_id, content, user_bot_token)
+        resp = teleapi.send_text(chat_id, content, user_bot_token, message_thread_id)
 
     log.log_api_send_message(job_id, chat_id, resp.status_code)
 

@@ -12,21 +12,27 @@ def get_bot_details(user_bot_token):
     return requests.get(endpoint)
 
 
-def send_media_group(chat_id, photo_id, content, user_bot_token):
+def send_media_group(chat_id, photo_id, content, user_bot_token, message_thread_id):
     media, files = prepare_photos(photo_id, content)
-    query_string = urlencode({"chat_id": chat_id, "media": media})
+    query = {
+        "chat_id": chat_id,
+        "media": media,
+        "reply_to_message_id": message_thread_id,
+    }
+    query_string = urlencode(query)
     endpoint = "https://api.telegram.org/bot{}/sendMediaGroup?{}".format(
         user_bot_token, query_string
     )
     return requests.post(endpoint, files=files)
 
 
-def send_single_photo(chat_id, photo_id, content, user_bot_token):
+def send_single_photo(chat_id, photo_id, content, user_bot_token, message_thread_id):
     query = {
         "chat_id": chat_id,
         "photo": photo_id,
         "caption": content,
         "parse_mode": "html",
+        "reply_to_message_id": message_thread_id,
     }
     query_string = urlencode(query)
     endpoint = "https://api.telegram.org/bot{}/sendPhoto?{}".format(
@@ -54,7 +60,7 @@ def send_single_photo_local(
     return requests.post(endpoint, files={"photo": photo})
 
 
-def send_poll(chat_id, content, user_bot_token):
+def send_poll(chat_id, content, user_bot_token, message_thread_id):
     poll_content = json.loads(content)
     endpoint = "https://api.telegram.org/bot{}/sendPoll".format(user_bot_token)
     parameters = {
@@ -71,12 +77,18 @@ def send_poll(chat_id, content, user_bot_token):
         "explanation_parse_mode": "html",
         "is_closed": poll_content.get("is_closed"),
         "close_date": poll_content.get("close_date"),
+        "reply_to_message_id": message_thread_id,
     }
     return requests.get(endpoint, data=parameters)
 
 
-def send_text(chat_id, content, user_bot_token):
-    query = {"chat_id": chat_id, "text": content, "parse_mode": "html"}
+def send_text(chat_id, content, user_bot_token, message_thread_id):
+    query = {
+        "chat_id": chat_id,
+        "text": content,
+        "parse_mode": "html",
+        "reply_to_message_id": message_thread_id,
+    }
     query_string = urlencode(query)
     endpoint = "https://api.telegram.org/bot{}/sendMessage?{}".format(
         user_bot_token, query_string
