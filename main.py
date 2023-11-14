@@ -7,7 +7,7 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 from telegram.ext._contexttypes import ContextTypes
-from telegram import Update, Bot
+from telegram import Update
 from bot.convos import handlers as convo_handlers
 import config
 from common.log import logger
@@ -52,11 +52,9 @@ def prepare_application(dp):
     dp.add_error_handler(error)
 
 
-application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
-prepare_application(application)
-
 # Use webhook when running in prod (via gunicorn)
 if config.ENV:
+    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
     asyncio.run(application.bot.setWebhook(config.BOTHOST))
 
     @app.get("/")
@@ -65,6 +63,8 @@ if config.ENV:
 
     @app.post("/")
     async def process_update():
+        application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
+        prepare_application(application)
         async with application:
             update = Update.de_json(request.get_json(force=True), application.bot)
             await application.process_update(update)
@@ -73,6 +73,8 @@ if config.ENV:
 
 # Use polling when running locally
 if __name__ == "__main__":
+    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
+    prepare_application(application)
     application.run_polling()
 
     # Used for testing webhook locally, instructions for how to set up local webhook at https://dev.to/ibrarturi/how-to-test-webhooks-on-your-localhost-3b4f
