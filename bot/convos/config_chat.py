@@ -1,5 +1,6 @@
 from teleapi.endpoints import get_bot_details
 from telegram.ext import ConversationHandler
+from telegram.ext._contexttypes import ContextTypes
 from bot.replies import replies
 from database import mongo
 from database.dbutils import dbutils
@@ -9,42 +10,43 @@ import teleapi.endpoints as teleapi
 
 state0, state1 = range(2)
 
+
 # state 0
-def choose_chat(update, context):
+async def choose_chat(update, context: ContextTypes.DEFAULT_TYPE):
     db_service = mongo.MongoService(update)
     chat_title = str(update.message.text)
     user_id = update.message.from_user.id
     chat_entry = dbutils.find_chat_by_title(db_service, user_id, chat_title)
 
     if chat_entry is None:
-        replies.send_error_message(update)
+        await replies.send_error_message(update)
         return state0
 
     prev_token = chat_entry.get("user_bot_token")
     if prev_token is None:
         context.user_data["chat_id"] = chat_entry["chat_id"]
         context.user_data["chat_title"] = chat_entry["chat_title"]
-        replies.send_prompt_user_bot_message(update)
+        await replies.send_prompt_user_bot_message(update)
         return state1
 
     # Revert back to default — both chat and jobs
     has_err = reset_sender(db_service, chat_entry["chat_id"], user_id, None, prev_token)
     if has_err:
-        replies.send_missing_bot_in_group_message(update)
+        await replies.send_missing_bot_in_group_message(update)
         return ConversationHandler.END
-    replies.send_sender_reset_success_message(update)
+    await replies.send_sender_reset_success_message(update)
     return ConversationHandler.END
 
 
 # state 1
-def update_sender(update, context):
+async def update_sender(update, context: ContextTypes.DEFAULT_TYPE):
     new_token = str(update.message.text)
     user_id = update.message.from_user.id
 
     # check if bot exists
     resp = get_bot_details(new_token)
     if resp.status_code != 200:
-        replies.send_error_message(update)
+        await replies.send_error_message(update)
         return state1
 
     db_service = mongo.MongoService(update)
@@ -59,10 +61,12 @@ def update_sender(update, context):
     chat_id, chat_title = context.user_data["chat_id"], context.user_data["chat_title"]
     has_err = reset_sender(db_service, chat_id, user_id, new_token, None)
     if has_err:
-        replies.send_missing_bot_in_group_message(update)
+        await replies.send_missing_bot_in_group_message(update)
         return ConversationHandler.END
 
-    replies.send_sender_change_success_message(update, chat_title, bot_data["username"])
+    await replies.send_sender_change_success_message(
+        update, chat_title, bot_data["username"]
+    )
     return ConversationHandler.END
 
 

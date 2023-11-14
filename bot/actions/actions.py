@@ -1,3 +1,4 @@
+import json
 import jsons
 from bot.replies import replies
 from common import log, utils
@@ -6,31 +7,32 @@ from database import mongo
 from database.dbutils import dbutils
 from cron_descriptor import get_description
 from teleapi import endpoints as teleapi
-from bot.actions.permissions import *
+from bot.actions import permissions
 from bot.actions.readonly import *
 from bot.actions.removals import *
 
 
-def add_new_job(update, context):
+async def add_new_job(update, context: ContextTypes.DEFAULT_TYPE):
     db_service = mongo.MongoService(update)
-    if not check_rights(update, context, db_service):
+    rights = await permissions.check_rights(update, context, db_service)
+    if not rights:
         return
 
     # timezone must be defined in order to create new job
     chat_entry = dbutils.find_chat_by_chatid(db_service, update.message.chat.id)
     if chat_entry is None:
-        return replies.send_start_message(update)
+        return await replies.send_start_message(update)
 
     # person limit
     user_id = update.message.from_user.id
     job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
-        return replies.send_exceed_limit_error_message(update, user_limit)
+        return await replies.send_exceed_limit_error_message(update, user_limit)
 
     # check name does not already exist
     chat_id = update.message.chat.id
     if dbutils.entry_exists(db_service, chat_id, update.message.text):
-        return replies.send_invalid_new_job_message(update)
+        return await replies.send_invalid_new_job_message(update)
 
     # add job to db
     msg = update.message
@@ -42,11 +44,11 @@ def add_new_job(update, context):
         user_bot_token=chat_entry.get("user_bot_token"),
         message_thread_id=msg.message_thread_id if msg.is_topic_message else None,
     )
-    replies.send_request_text_message(update)
+    await replies.send_request_text_message(update)
     log.log_new_job_added(update)
 
 
-def add_new_channel_job(update, poll=False):
+async def add_new_channel_job(update, poll=False):
     chat_id = update.message.chat.id
     # channel jobs can only be set up from private chats
     if update.message.chat.type != "private":
@@ -56,14 +58,14 @@ def add_new_channel_job(update, poll=False):
 
     # job creation by forwarded messages only for channels
     if forwarded_chat_info.type != "channel":
-        replies.send_channels_only_error_message(update, forwarded_chat_info.type)
+        await replies.send_channels_only_error_message(update, forwarded_chat_info.type)
         return
 
     db_service = mongo.MongoService(update)
     # timezone must be defined in order to create new job
     chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id)
     if chat_entry is None:
-        return replies.send_start_message(update)
+        return await replies.send_start_message(update)
 
     # add chat to db
     chat_exists = dbutils.chat_exists(db_service, forwarded_chat_info.id)
@@ -98,7 +100,7 @@ def add_new_channel_job(update, poll=False):
     # new job to be created, assert job limit
     job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
-        return replies.send_exceed_limit_error_message(update, user_limit)
+        return await replies.send_exceed_limit_error_message(update, user_limit)
 
     # add new job
     content = update.message.caption
@@ -113,8 +115,7 @@ def add_new_channel_job(update, poll=False):
 
     if poll:
         content_type = ContentType.POLL.value
-        poll_json = update.message.poll
-        content = jsons.dumps(poll_json)
+        content = update.message.poll.to_json()
 
     photo_id = "" if len(update.message.photo) < 1 else update.message.photo[-1].file_id
 
@@ -136,18 +137,19 @@ def add_new_channel_job(update, poll=False):
     )
 
     log.log_new_channel_job_added(update)
-    replies.send_request_crontab_message(update)
+    await replies.send_request_crontab_message(update)
 
 
-def add_new_jobs(update, context):
+async def add_new_jobs(update, context: ContextTypes.DEFAULT_TYPE):
     db_service = mongo.MongoService(update)
-    if not check_rights(update, context, db_service):
+    rights = await permissions.check_rights(update, context, db_service)
+    if not rights:
         return
 
     # timezone must be defined in order to create new job
     chat_id = update.message.chat.id
     if dbutils.find_chat_by_chatid(db_service, chat_id) is None:
-        return replies.send_start_message(update)
+        return await replies.send_start_message(update)
 
     # parse user response
     res = utils.extract_jobs(update.message.text_html)
@@ -157,7 +159,7 @@ def add_new_jobs(update, context):
     user_id = update.message.from_user.id
     current_job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if current_job_count + new_job_count > user_limit:
-        return replies.send_exceed_limit_error_message(update, user_limit)
+        return await replies.send_exceed_limit_error_message(update, user_limit)
 
     successful_creation = []
 
@@ -191,20 +193,20 @@ def add_new_jobs(update, context):
     if len(successful_creation) > 0:
         log.log_new_jobs_added(update, " // ".join(successful_creation))
         postfix = "\n".join("• %s" % x for x in successful_creation)
-        replies.send_jobs_creation_success_message(update, postfix)
+        await replies.send_jobs_creation_success_message(update, postfix)
     else:
-        replies.send_error_message(update)
+        await replies.send_error_message(update)
 
 
-def add_timezone(update):
+async def add_timezone(update):
     # check validity
     tz_values = utils.extract_tz_values(update.message.text)
     if not tz_values:
-        return replies.send_error_message(update)
+        return await replies.send_error_message(update)
 
     utc_tz, tz_offset = utils.calc_tz(tz_values)
     if tz_offset < -12 or tz_offset > 14:
-        return replies.send_error_message(update)
+        return await replies.send_error_message(update)
 
     db_service = mongo.MongoService(update)
 
@@ -221,18 +223,19 @@ def add_timezone(update):
             telegram_ts=update.message.date,
         )
 
-    replies.send_help_message(update)
+    await replies.send_help_message(update)
 
 
-def add_message(update, context, photo=False, poll=False):
+async def add_message(update, context, photo=False, poll=False):
     db_service = mongo.MongoService(update)
-    if not check_rights(update, context, db_service):
+    rights = await permissions.check_rights(update, context, db_service)
+    if not rights:
         return
 
     chat_id = update.message.chat.id
     entry = dbutils.find_latest_entry(db_service, chat_id)
     if entry is None:
-        return replies.send_simple_prompt_message(update)
+        return await replies.send_simple_prompt_message(update)
 
     last_updated_by = update.message.from_user.id
     payload = {"last_updated_by": update.message.from_user.id}
@@ -249,11 +252,10 @@ def add_message(update, context, photo=False, poll=False):
         payload["photo_id"] = photo_ids
         payload["content_type"] = ContentType.MEDIA.value
     elif entry.get("content", "") != "":  # field must not be filled already
-        return replies.send_prompt_new_job_message(update)
+        return await replies.send_prompt_new_job_message(update)
     elif poll:
         payload["content_type"] = ContentType.POLL.value
-        poll_json = update.message.poll
-        payload["content"] = jsons.dumps(poll_json)
+        payload["content"] = update.message.poll.to_json()
     elif photo and photo_group_id != "":  # first photo of media group
         payload["photo_id"] = update.message.photo[-1].file_id
         payload["photo_group_id"] = photo_group_id
@@ -276,14 +278,14 @@ def add_message(update, context, photo=False, poll=False):
 
     # reply
     if not same_photo_group:
-        replies.send_request_crontab_message(update)
+        await replies.send_request_crontab_message(update)
 
 
-def prepare_crontab_update(update, crontab, db_service):
+async def prepare_crontab_update(update, crontab, db_service):
     try:
         description = get_description(crontab).lower()
     except Exception:  # crontab is not valid
-        replies.send_invalid_crontab_message(update)
+        await replies.send_invalid_crontab_message(update)
         return None, None, True
 
     # arrange next run date and time
@@ -292,7 +294,7 @@ def prepare_crontab_update(update, crontab, db_service):
     try:
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
     except Exception:
-        replies.send_invalid_crontab_message(update)
+        await replies.send_invalid_crontab_message(update)
         return None, None, True
 
     # update db entry
@@ -305,18 +307,21 @@ def prepare_crontab_update(update, crontab, db_service):
     return description, payload, False
 
 
-def update_crontab(update, context):
+async def update_crontab(update, context: ContextTypes.DEFAULT_TYPE):
     db_service = mongo.MongoService(update)
-    if not check_rights(update, context, db_service):
+    rights = await permissions.check_rights(update, context, db_service)
+    if not rights:
         return
     entry = dbutils.find_latest_entry(db_service, update.message.chat.id)
     if entry is None:
-        return replies.send_simple_prompt_message(update)
+        return await replies.send_simple_prompt_message(update)
     if entry.get("crontab", "") != "":  # field must be empty
-        return replies.send_prompt_new_job_message(update)
+        return await replies.send_prompt_new_job_message(update)
 
     crontab = update.message.text
-    description, payload, has_err = prepare_crontab_update(update, crontab, db_service)
+    description, payload, has_err = await prepare_crontab_update(
+        update, crontab, db_service
+    )
     if has_err:
         return
 
@@ -334,31 +339,32 @@ def update_crontab(update, context):
         )
         log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.status_code)
 
-    replies.send_confirm_message(update, entry, description)
+    await replies.send_confirm_message(update, entry, description)
 
 
-def update_timezone(update, context):
+async def update_timezone(update, context: ContextTypes.DEFAULT_TYPE):
     db_service = mongo.MongoService(update)
-    if not check_rights(update, context, db_service):
+    rights = await permissions.check_rights(update, context, db_service)
+    if not rights:
         return
 
     # check validity
     tz_values = utils.extract_tz_values(update.message.text)
     if not tz_values:
-        return replies.send_error_message(update)
+        return await replies.send_error_message(update)
 
     utc_tz, tz_offset = utils.calc_tz(tz_values)
     if tz_offset < -12 or tz_offset > 14:
-        return replies.send_error_message(update)
+        return await replies.send_error_message(update)
 
     # retrieve current chat data
     chat_id = update.message.chat.id
     chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id)
     if chat_entry is None:
-        return replies.send_start_message(update)
+        return await replies.send_start_message(update)
 
     if tz_offset == chat_entry.get("tz_offset", ""):
-        return replies.send_timezone_nochange_error_message(update)
+        return await replies.send_timezone_nochange_error_message(update)
 
     # update chat entry
     payload = {"tz_offset": tz_offset, "utc_tz": utc_tz}
@@ -378,7 +384,7 @@ def update_timezone(update, context):
         payload = {"nextrun_ts": db_nextrun_ts, "user_nextrun_ts": user_nextrun_ts}
         dbutils.update_entry_by_jobname(db_service, job_entry, payload)
 
-    replies.send_timezone_change_success_message(update, utc_tz)
+    return await replies.send_timezone_change_success_message(update, utc_tz)
 
 
 def generate_jobname(db_service, job_prefix, chat_id):

@@ -3,6 +3,8 @@ import pytest
 
 from database.mongo import MongoService
 
+pytest_plugins = ("pytest_asyncio",)
+
 
 @pytest.fixture
 def mongo_service(mocker):

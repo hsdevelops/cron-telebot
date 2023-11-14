@@ -1,11 +1,12 @@
+import asyncio
 from telegram.ext import (
-    Updater,
     CommandHandler,
     MessageHandler,
-    Filters,
-    Dispatcher,
+    filters,
+    Application,
     CallbackQueryHandler,
 )
+from telegram.ext._contexttypes import ContextTypes
 from telegram import Update, Bot
 from bot.convos import handlers as convo_handlers
 import config
@@ -15,12 +16,12 @@ from api import app
 from bot import handlers, commands
 
 
-def error(update, context):
+async def error(update, context: ContextTypes.DEFAULT_TYPE):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
-def prepare_dispatcher(dp):
+def prepare_application(dp):
     # conversations (must be declared first, not sure why)
     dp.add_handler(convo_handlers.edit_handler)
     dp.add_handler(convo_handlers.config_chat_handler)
@@ -40,9 +41,9 @@ def prepare_dispatcher(dp):
     dp.add_handler(CommandHandler("addmultiple", commands.add_multiple))
 
     # on noncommand i.e message
-    dp.add_handler(MessageHandler(Filters.text, handlers.handle_messages))
-    dp.add_handler(MessageHandler(Filters.photo, handlers.handle_photos))
-    dp.add_handler(MessageHandler(Filters.poll, handlers.handle_polls))
+    dp.add_handler(MessageHandler(filters.TEXT, handlers.handle_messages))
+    dp.add_handler(MessageHandler(filters.PHOTO, handlers.handle_photos))
+    dp.add_handler(MessageHandler(filters.POLL, handlers.handle_polls))
 
     # on callback
     dp.add_handler(CallbackQueryHandler(handlers.handle_callback))
@@ -51,12 +52,13 @@ def prepare_dispatcher(dp):
     dp.add_error_handler(error)
 
 
+application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
+prepare_application(application)
+
 # Use webhook when running in prod (via gunicorn)
 if config.ENV:
     bot = Bot(token=config.TELEGRAM_BOT_TOKEN)
-    bot.setWebhook(config.BOTHOST)
-    dp = Dispatcher(bot=bot, update_queue=None)
-    prepare_dispatcher(dp)
+    asyncio.run(bot.setWebhook(config.BOTHOST))
 
     @app.get("/")
     def home():
@@ -64,20 +66,13 @@ if config.ENV:
 
     @app.post("/")
     def process_update():
-        dp.process_update(Update.de_json(request.get_json(force=True), bot))
+        application.process_update(Update.de_json(request.get_json(force=True), bot))
         return Response(status=200)
 
 
 # Use polling when running locally
 if __name__ == "__main__":
-    updater = Updater(config.TELEGRAM_BOT_TOKEN, use_context=True)
-    updater.stop()
-    updater.is_idle = False
-
-    dp = updater.dispatcher
-    prepare_dispatcher(dp)
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
     # Used for testing webhook locally, instructions for how to set up local webhook at https://dev.to/ibrarturi/how-to-test-webhooks-on-your-localhost-3b4f
     # app.run(debug=True)
