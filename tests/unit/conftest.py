@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest import mock
 import pytest
 
 from telegram import Chat, Update, User, Message
@@ -46,13 +46,17 @@ def mock_channel():
     }
 
 
+def mock_update(text=None, id=1):
+    chat = Chat(id=1, type="private")
+    usr = User(id=id, first_name="hs", is_bot=False)
+    msg = Message(date=id, chat=chat, message_id=id, from_user=usr, text=text)
+    update = Update(message=msg, update_id=id)
+    return update
+
+
 @pytest.fixture
 def simple_update():
-    chat = Chat(id=1, type="private")
-    usr = User(id=1, first_name="hs", is_bot=False)
-    msg = Message(date=1, chat=chat, message_id=1, from_user=usr)
-    update = Update(message=msg, update_id=1)
-    yield update
+    yield mock_update()
 
 
 @pytest.fixture
@@ -67,13 +71,14 @@ def simple_group_update():
 @pytest.fixture
 def simple_context():
     obj1, obj2 = {}, {}
-    context = Mock()
-    context.bot_data.__setitem__ = Mock()
-    context.bot_data.__getitem__ = Mock()
+    context = mock.Mock()
+    context.bot_data.__setitem__ = mock.Mock()
+    context.bot_data.__getitem__ = mock.Mock()
     context.bot_data.__setitem__.side_effect = obj1.__setitem__
     context.bot_data.__getitem__.side_effect = obj1.__getitem__
-    context.user_data.__setitem__ = Mock()
-    context.user_data.__getitem__ = Mock()
+    context.user_data.__setitem__ = mock.Mock()
+    context.user_data.__getitem__ = mock.Mock()
     context.user_data.__setitem__.side_effect = obj2.__setitem__
     context.user_data.__getitem__.side_effect = obj2.__getitem__
+    context.bot.get_chat_member = mock.AsyncMock()
     yield context

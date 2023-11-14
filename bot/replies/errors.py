@@ -1,5 +1,6 @@
 from config import JOB_LIMIT_PER_PERSON, BOT_NAME
-from telegram import ParseMode, ForceReply
+from telegram import ForceReply
+from telegram.constants import ParseMode
 
 error_message = "You know that's not right..."
 exceed_limit_error_message = (
@@ -25,11 +26,11 @@ missing_chats_error_message = "Please add and set up %s in a group"
 missing_bot_in_group_message = "Terminating conversation... \n\nPlease add bot into the group as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>\nbefore running /changesender."
 
 
-def send_error_message(update):
-    update.message.reply_text(error_message)
+async def send_error_message(update):
+    await update.message.reply_text(error_message)
 
 
-def send_exceed_limit_error_message(update, limit):
+async def send_exceed_limit_error_message(update, limit):
     reply_text = exceed_limit_error_message.replace("__limit__", str(limit))
     if limit == JOB_LIMIT_PER_PERSON:
         reply_text = reply_text.replace("__custom_message__", "")
@@ -43,34 +44,34 @@ def send_exceed_limit_error_message(update, limit):
             "__custom_message__",
             "As per prior request we have increased your limit to %d.\n\n" % limit,
         )
-    update.message.reply_text(
+    await update.message.reply_text(
         text=reply_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
 
 
-def send_channels_only_error_message(update, chat_type):
+async def send_channels_only_error_message(update, chat_type):
     reply = channels_only_error_message.replace("__chat_type__", chat_type)
-    update.message.reply_text(reply)
+    await update.message.reply_text(reply)
 
 
-def send_user_unauthorized_error_message(update, bot_ic):
+async def send_user_unauthorized_error_message(update, bot_ic):
     reply = user_unauthorized_error_message.replace("__bot_ic__", bot_ic)
-    update.message.reply_text(reply)
+    await update.message.reply_text(reply)
 
 
-def send_wrong_restriction_message(update, bot_ic):
+async def send_wrong_restriction_message(update, bot_ic):
     reply = wrong_restrction_error_message.replace("__bot_ic__", bot_ic)
-    update.message.reply_text(reply)
+    await update.message.reply_text(reply)
 
 
-def send_timezone_nochange_error_message(update):
-    update.message.reply_text(timezone_nochange_error_message)
+async def send_timezone_nochange_error_message(update):
+    await update.message.reply_text(timezone_nochange_error_message)
 
 
-def send_invalid_crontab_message(update):
-    update.message.reply_text(
+async def send_invalid_crontab_message(update):
+    await update.message.reply_text(
         reply_markup=ForceReply(selective=True),
         text=invalid_crontab_message,
         parse_mode=ParseMode.HTML,
@@ -78,33 +79,35 @@ def send_invalid_crontab_message(update):
     )
 
 
-def send_invalid_new_job_message(update):
-    update.message.reply_text(invalid_new_job_message)
+async def send_invalid_new_job_message(update):
+    await update.message.reply_text(invalid_new_job_message)
 
 
-def send_quiz_unavailable_message(update):
-    update.message.reply_text(
+async def send_quiz_unavailable_message(update):
+    await update.message.reply_text(
         text=quiz_unavailable_message,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
 
 
-def send_no_photos_to_delete_error_message(update):
-    update.message.reply_text(no_photos_to_delete_error_message)
+async def send_no_photos_to_delete_error_message(update):
+    await update.message.reply_text(no_photos_to_delete_error_message)
 
 
-def send_attribute_change_error_message(update):
-    update.message.reply_text(attribute_change_error_message)
+async def send_attribute_change_error_message(update):
+    await update.message.reply_text(attribute_change_error_message)
 
 
-def send_private_only_error_message(update):
-    update.message.reply_text(private_only_error_message % BOT_NAME)
+async def send_private_only_error_message(update):
+    await update.message.reply_text(private_only_error_message % BOT_NAME)
 
 
-def send_missing_chats_error_message(update):
-    update.message.reply_text(missing_chats_error_message % BOT_NAME)
+async def send_missing_chats_error_message(update):
+    await update.message.reply_text(missing_chats_error_message % BOT_NAME)
 
 
-def send_missing_bot_in_group_message(update):
-    update.message.reply_text(missing_bot_in_group_message, parse_mode=ParseMode.HTML)
+async def send_missing_bot_in_group_message(update):
+    await update.message.reply_text(
+        missing_bot_in_group_message, parse_mode=ParseMode.HTML
+    )

@@ -3,6 +3,7 @@ import pytest
 
 from bot.replies import replies
 from bot.convos.config_chat import *
+from tests.unit.conftest import mock_update
 
 
 @pytest.fixture
@@ -34,47 +35,50 @@ State 0
 """
 
 
+@pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo_service")
 @mock.patch("bot.replies.replies.send_error_message")
-def test_choose_chat_no_chat(send_msg, simple_update):
-    res = choose_chat(simple_update, None)
+async def test_choose_chat_no_chat(send_msg, simple_update):
+    res = await choose_chat(simple_update, None)
     assert res == state0
     send_msg.assert_called_once()
 
 
+@pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_prompt_user_bot_message")
-def test_choose_chat_no_user_token(
-    send_msg, mongo_service, mock_group, simple_update, simple_context
+async def test_choose_chat_no_user_token(
+    send_msg, mongo_service, mock_group, simple_context
 ):
     mongo_service.insert_new_chat(mock_group)
 
-    simple_update.message.text = "test_group"
-    res = choose_chat(simple_update, simple_context)
+    simple_update = mock_update(text="test_group")
+    res = await choose_chat(simple_update, simple_context)
     assert res == state1
     send_msg.assert_called_once()
 
 
+@pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_prompt_user_bot_message")
-def test_choose_chat_none_user_token(
-    send_msg, mongo_service, mock_group, simple_update, simple_context
+async def test_choose_chat_none_user_token(
+    send_msg, mongo_service, mock_group, simple_context
 ):
     mock_group["user_bot_token"] = None
     mongo_service.insert_new_chat(mock_group)
 
-    simple_update.message.text = "test_group"
-    res = choose_chat(simple_update, simple_context)
+    simple_update = mock_update(text="test_group")
+    res = await choose_chat(simple_update, simple_context)
     assert res == state1
     send_msg.assert_called_once()
 
 
+@pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_sender_reset_success_message")
-def test_choose_chat_existing_user_token(
+async def test_choose_chat_existing_user_token(
     send_msg,
     mongo_service,
     mock_group,
     mock_job,
     mock_job2,
-    simple_update,
     simple_context,
 ):
     mock_group["user_bot_token"] = 1
@@ -83,8 +87,8 @@ def test_choose_chat_existing_user_token(
     mongo_service.insert_new_entry(mock_job)
     mongo_service.insert_new_entry(mock_job2)
 
-    simple_update.message.text = "test_group"
-    res = choose_chat(simple_update, simple_context)
+    simple_update = mock_update(text="test_group")
+    res = await choose_chat(simple_update, simple_context)
     assert res == ConversationHandler.END
 
     send_msg.assert_called_once()
@@ -112,16 +116,18 @@ class MockResponse:
         return self.json_data
 
 
+@pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_error_message")
-def test_update_sender_invalid_bot(send_msg, simple_update, simple_context):
-    simple_update.message.text = "some_token"
-    res = update_sender(simple_update, simple_context)
+async def test_update_sender_invalid_bot(send_msg, simple_context):
+    simple_update = mock_update(text="some_token")
+    res = await update_sender(simple_update, simple_context)
     assert res == state1
     send_msg.assert_called_once()
 
 
+@pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_sender_change_success_message")
-def test_update_sender_valid_bot(
+async def test_update_sender_valid_bot(
     send_msg,
     mocker,
     mongo_service,
@@ -139,10 +145,10 @@ def test_update_sender_valid_bot(
     mongo_service.insert_new_entry(mock_job)
     mongo_service.insert_new_entry(mock_job2)
 
-    simple_update.message.text = "some_token"
+    simple_update = mock_update(text="some_token")
     simple_context.user_data["chat_id"] = mock_group["chat_id"]
     simple_context.user_data["chat_title"] = mock_group["chat_title"]
-    res = update_sender(simple_update, simple_context)
+    res = await update_sender(simple_update, simple_context)
     assert res == ConversationHandler.END
 
     res = mongo_service.find_one_bot({"id": 1})

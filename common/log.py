@@ -6,6 +6,9 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+httpx_logger = logging.getLogger("httpx")
+httpx_logger.setLevel(logging.WARNING)
+
 
 # bot
 def log_new_job_added(update):

@@ -27,3 +27,27 @@ def test_calc_tz(string, exp_tz, exp_offset):
     utc_tz, tz_offset = utils.calc_tz(res)
     assert utc_tz == exp_tz
     assert tz_offset == exp_offset
+
+
+def test_extract_jobs():
+    text = """
+    30 8 * * 1 Normal job
+    30 8 * 2 Error
+    30 8 * * 2,4,5 Multiple days
+    * * * * * Every minute
+    """
+
+    res = utils.extract_jobs(text)
+    assert len(res) == 3
+
+    crontab, content = res[0]
+    assert crontab == "30 8 * * 1"
+    assert content == "Normal job"
+
+    crontab, content = res[1]
+    assert crontab == "30 8 * * 2,4,5"
+    assert content == "Multiple days"
+
+    crontab, content = res[2]
+    assert crontab == "* * * * *"
+    assert content == "Every minute"

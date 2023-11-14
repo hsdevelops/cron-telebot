@@ -2,7 +2,7 @@
 
 Recurring Messages ([@cron_telebot](https://t.me/cron_telebot)) is a Telegram bot that schedules recurring Telegram messages. :sparkles:
 
-Refer to our [user guide](https://github.com/hsdevelops/rm-bot/wiki/User-Guide) for usage instructions.
+Refer to our [user guide](https://github.com/hsdevelops/cron-telebot/wiki/User-Guide) for usage instructions.
 
 ## Noteworthy files
 1. [main.py](./main.py) — telegram bot, to add/delete/view the recurring jobs
@@ -14,7 +14,7 @@ Refer to our [user guide](https://github.com/hsdevelops/rm-bot/wiki/User-Guide) 
 1. Telegram bot created with [@botfather](https://telegram.me/botfather)
 2. Existing MongoDB
 
-Note: The latest version does not support Google Sheets as a database anymore. Please refer to the [gsheets branch](https://github.com/hsdevelops/rm-bot/tree/gsheets) (no longer maintained) if you would like to use Google Sheets for your database.
+Note: The latest version does not support Google Sheets as a database anymore. Please refer to the [gsheets branch](https://github.com/hsdevelops/cron-telebot/tree/gsheets) (no longer maintained) if you would like to use Google Sheets for your database.
 
 ## Running locally
 
