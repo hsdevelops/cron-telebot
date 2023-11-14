@@ -57,8 +57,7 @@ prepare_application(application)
 
 # Use webhook when running in prod (via gunicorn)
 if config.ENV:
-    bot = Bot(token=config.TELEGRAM_BOT_TOKEN)
-    asyncio.run(bot.setWebhook(config.BOTHOST))
+    asyncio.run(application.bot.setWebhook(config.BOTHOST))
 
     @app.get("/")
     def home():
@@ -66,9 +65,10 @@ if config.ENV:
 
     @app.post("/")
     async def process_update():
-        update = Update.de_json(request.get_json(force=True), bot)
-        await application.process_update(update)
-        return Response(status=200)
+        async with application:
+            update = Update.de_json(request.get_json(force=True), application.bot)
+            await application.process_update(update)
+            return Response(status=200)
 
 
 # Use polling when running locally

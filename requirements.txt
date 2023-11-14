@@ -1,5 +1,6 @@
 anyio==3.6.2
 APScheduler==3.6.3
+asgiref==3.7.2
 attrs==22.1.0
 black==22.3.0
 cachetools==4.2.2
