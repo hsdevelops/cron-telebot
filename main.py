@@ -65,8 +65,9 @@ if config.ENV:
         return "Hello world!"
 
     @app.post("/")
-    def process_update():
-        application.process_update(Update.de_json(request.get_json(force=True), bot))
+    async def process_update():
+        update = Update.de_json(request.get_json(force=True), bot)
+        await application.process_update(update)
         return Response(status=200)
 
 
