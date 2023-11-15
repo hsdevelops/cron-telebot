@@ -1,24 +1,31 @@
 import gc, psutil
+from http import HTTPStatus
 from prometheus_client import Gauge, generate_latest
+import uvicorn
 from common import log, utils
 from common.enums import ContentType
 from database import mongo
 from database.dbutils import dbutils
-from flask import Flask, Response
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from threading import Thread
-from prometheus_flask_exporter import PrometheusMetrics
+from fastapi import FastAPI, Response
 
 import config
+from bot.ptb import lifespan
 
-app = Flask(__name__)
-metrics = PrometheusMetrics(app)
 cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
 
+app = FastAPI(lifespan=lifespan) if config.ENV else FastAPI()
 
-@app.route("/metricz")
+
+@app.get("/")
+def home():
+    return "Hello world!"
+
+
+@app.get("/metricz")
 def prom_endpoint():
     cpu_percent = psutil.cpu_percent()
     memory_percent = psutil.virtual_memory().percent
@@ -29,10 +36,11 @@ def prom_endpoint():
     log.log_update_prometheus("cpu_usage", cpu_percent)
     log.log_update_prometheus("memory_usage", memory_percent)
 
-    return Response(generate_latest(), mimetype="text/plain")
+    return Response(content=generate_latest(), media_type="text/plain")
 
 
-@app.route("/api", methods=["GET", "POST"])
+@app.get("/api")
+@app.post("/api")
 def run():
     db_service = mongo.MongoService()
 
@@ -46,7 +54,7 @@ def run():
     if entry_count < 1:
         log.log_completion(0)
         gc.collect()
-        return Response(status=200)
+        return Response(status_code=HTTPStatus.OK)
 
     q = []
     for entry in entries:
@@ -65,7 +73,7 @@ def run():
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
     dbutils.save_msg_count(entry_count)
     log.log_completion(entry_count)
-    return Response(status=200)
+    return Response(status_code=HTTPStatus.OK)
 
 
 def process_job(db_service: mongo.MongoService, entry, parsed_time):
@@ -156,4 +164,4 @@ def send_message(
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
