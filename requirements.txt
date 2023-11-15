@@ -82,7 +82,7 @@ uritemplate==4.1.1
 urllib3==1.26.9
 uvicorn
 uvloop
-watchfiles==0.21.0
+watchfiles
 websockets==12.0
 Werkzeug==2.1.2
 zipp==3.8.0
