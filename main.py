@@ -1,19 +1,21 @@
 import asyncio
+from http import HTTPStatus
+from fastapi import Request, Response
 from telegram.ext import (
     CommandHandler,
     MessageHandler,
     filters,
-    Application,
     CallbackQueryHandler,
 )
 from telegram.ext._contexttypes import ContextTypes
 from telegram import Update
-from bot.convos import handlers as convo_handlers
-import config
-from common.log import logger
-from flask import request, Response
+import uvicorn
+from bot.ptb import ptb
 from api import app
 from bot import handlers, commands
+import config
+from bot.convos import handlers as convo_handlers
+from common.log import logger
 
 
 async def error(update, context: ContextTypes.DEFAULT_TYPE):
@@ -21,7 +23,7 @@ async def error(update, context: ContextTypes.DEFAULT_TYPE):
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
-def prepare_application(dp):
+def add_handlers(dp):
     # conversations (must be declared first, not sure why)
     dp.add_handler(convo_handlers.edit_handler)
     dp.add_handler(convo_handlers.config_chat_handler)
@@ -52,30 +54,23 @@ def prepare_application(dp):
     dp.add_error_handler(error)
 
 
+add_handlers(ptb)
+
 # Use webhook when running in prod (via gunicorn)
 if config.ENV:
-    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
-    asyncio.run(application.bot.setWebhook(config.BOTHOST))
-
-    @app.get("/")
-    def home():
-        return "Hello world!"
 
     @app.post("/")
-    async def process_update():
-        application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
-        prepare_application(application)
-        async with application:
-            update = Update.de_json(request.get_json(force=True), application.bot)
-            await application.process_update(update)
-            return Response(status=200)
+    async def process_update(request: Request):
+        req = await request.json()
+        update = Update.de_json(req, ptb.bot)
+        await ptb.process_update(update)
+        return Response(status_code=HTTPStatus.OK)
 
 
 # Use polling when running locally
 if __name__ == "__main__":
-    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
-    prepare_application(application)
-    application.run_polling()
-
-    # Used for testing webhook locally, instructions for how to set up local webhook at https://dev.to/ibrarturi/how-to-test-webhooks-on-your-localhost-3b4f
-    # app.run(debug=True)
+    if not config.ENV:
+        ptb.run_polling()
+    else:
+        # Used for testing webhook locally, instructions for how to set up local webhook at https://dev.to/ibrarturi/how-to-test-webhooks-on-your-localhost-3b4f
+        uvicorn.run(app, host="0.0.0.0", port=8000)
