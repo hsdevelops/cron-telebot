@@ -1,4 +1,4 @@
-annotated-types==0.6.0
+annotated-types
 anyio==3.7.1
 APScheduler==3.6.3
 asgiref==3.7.2
