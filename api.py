@@ -10,14 +10,16 @@ from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from threading import Thread
 from fastapi import FastAPI, Response
+from prometheus_fastapi_instrumentator import Instrumentator
 
 import config
 from bot.ptb import lifespan
 
-cpu_usage = Gauge("cpu_usage", "CPU Usage")
-memory_usage = Gauge("memory_usage", "Memory Usage")
 
 app = FastAPI(lifespan=lifespan) if config.ENV else FastAPI()
+Instrumentator().instrument(app).expose(app)
+cpu_usage = Gauge("cpu_usage", "CPU Usage")
+memory_usage = Gauge("memory_usage", "Memory Usage")
 
 
 @app.get("/")
