@@ -1,4 +1,3 @@
-import asyncio
 from http import HTTPStatus
 from fastapi import Request, Response
 from telegram.ext import (
