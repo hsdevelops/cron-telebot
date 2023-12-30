@@ -51,7 +51,7 @@ def mock_jobs():
             "paused_ts": "2012-02-11 08:22:00",
             "removed_ts": "",
             "nextrun_ts": "2012-02-11 08:22:00",
-            "remarks": "",
+            "errors": [],
         },
         {
             "_id": 6,
@@ -61,7 +61,7 @@ def mock_jobs():
             "created_ts": 1,
             "removed_ts": "2012-02-11 08:22:00",
             "nextrun_ts": "2012-02-11 08:22:00",
-            "remarks": "Error 400",
+            "errors": [{"error": "Error 400", "timestamp": ""}],
         },
     ]
 
@@ -175,6 +175,7 @@ def test_add_new_entry(mongo_service):
     assert res["removed_ts"] == ""
     assert res["remarks"] == ""
     assert res["user_bot_token"] is None
+    assert res["errors"] == []
 
 
 def test_remove_entries_by_chat(mongo_service, mock_jobs):

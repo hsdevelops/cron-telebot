@@ -16,3 +16,4 @@ photo-*
 .env
 
 !scripts/revive.py
+.*

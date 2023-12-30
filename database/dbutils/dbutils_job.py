@@ -32,7 +32,7 @@ def find_entries_removed_between(
 ):
     q = {"removed_ts": {"$gte": start_ts, "$lte": end_ts}}
     if err_status is not None:
-        q["remarks"] = {"$regex": f"^Error {err_status}"}
+        q["errors.error"] = {"$regex": f"^Error {err_status}"}
     return db_service.find_entries(q)
 
 
@@ -92,6 +92,7 @@ def add_new_entry(
     user_nextrun_ts="",
     user_bot_token=None,
     message_thread_id=None,
+    errors=[],
 ):
     db_service.insert_new_entry(
         {
@@ -113,6 +114,7 @@ def add_new_entry(
             "remarks": "",
             "user_bot_token": user_bot_token,
             "message_thread_id": message_thread_id,
+            "errors": errors,
         }
     )
 

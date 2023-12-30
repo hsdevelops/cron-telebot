@@ -32,7 +32,7 @@ Note: The latest version does not support Google Sheets as a database anymore. P
 ## Running in production
 1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.
    * Remember to set the ENV environment variable to any value of your choice (e.g. `dev`, `uat`, `prod`)
-2. Entrypoint is `gunicorn main:app -k uvicorn.workers.UvicornWorker`. No need to run bot and api separately.
+2. Entrypoint is `gunicorn main:app -k uvicorn.workers.UvicornWorker --timeout 60`. No need to run bot and api separately.
 
 ## Contributing
 

@@ -47,11 +47,11 @@ def calc_tz(tz_values):
     return (utc_tz, tz_offset)
 
 
-def parse_time_mins(datetime_obj):
+def parse_time_mins(datetime_obj: datetime) -> str:
     return datetime_obj.strftime("%Y-%m-%d %H:%M")
 
 
-def parse_time_millis(datetime_obj):
+def parse_time_millis(datetime_obj: datetime) -> str:
     return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
 
 

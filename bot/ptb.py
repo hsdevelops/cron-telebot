@@ -17,7 +17,8 @@ ptb = ptb.build()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await ptb.bot.setWebhook(config.BOTHOST)
+    if config.BOTHOST:
+        await ptb.bot.setWebhook(config.BOTHOST)
     async with ptb:
         await ptb.start()
         yield
