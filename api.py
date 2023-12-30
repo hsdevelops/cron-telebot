@@ -58,6 +58,18 @@ def run():
         gc.collect()
         return Response(status_code=HTTPStatus.OK)
 
+    for i in range(0, len(entries), config.BATCH_SIZE):
+        batch = entries[i : i + config.BATCH_SIZE]
+        batch_jobs(db_service, batch, parsed_time)
+
+    gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
+    if config.INFLUXDB_TOKEN:
+        dbutils.save_msg_count(entry_count)
+    log.log_completion(entry_count)
+    return Response(status_code=HTTPStatus.OK)
+
+
+def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str):
     q = []
     for entry in entries:
         args = (
@@ -71,11 +83,6 @@ def run():
 
     for t in q:
         t.join()
-
-    gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
-    dbutils.save_msg_count(entry_count)
-    log.log_completion(entry_count)
-    return Response(status_code=HTTPStatus.OK)
 
 
 def process_job(db_service: mongo.MongoService, entry, parsed_time):
@@ -91,6 +98,7 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
     crontab = entry.get("crontab", "")
     previous_message_id = str(entry.get("previous_message_id", ""))
     message_thread_id = entry.get("message_thread_id", None)
+    errors = entry.get("errors", [])
 
     user_bot_token = entry.get("user_bot_token")
     if user_bot_token is None:
@@ -106,23 +114,22 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
         user_bot_token,
         message_thread_id,
     )
-    if status == 429:  # try again in one minute
-        return
 
     if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
         teleapi.delete_message(chat_id, previous_message_id, user_bot_token)
 
     # calculate and update next run time
-    chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id)
-    user_tz_offset = chat_entry.get("tz_offset")
+    chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id) or {}
+    user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
     user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+    errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
 
     payload = {
         "nextrun_ts": db_nextrun_ts,
         "user_nextrun_ts": user_nextrun_ts,
         "previous_message_id": str(bot_message_id),
-        "remarks": "" if err is None else err,
-        "removed_ts": "" if err is None else parsed_time,
+        "removed_ts": parsed_time if len(errors) > config.RETRIES else "",
+        "errors": errors,
     }
     dbutils.update_entry_by_jobname(db_service, entry, payload)
 
@@ -152,9 +159,7 @@ def send_message(
 
     log.log_api_send_message(job_id, chat_id, resp.status_code)
 
-    if resp.status_code == 429:
-        return "", resp.status_code, None
-    elif resp.status_code != 200:
+    if resp.status_code != 200:
         err_msg = "Error {}: {}".format(resp.status_code, resp.json()["description"])
         return "", resp.status_code, err_msg
 
