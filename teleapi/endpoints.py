@@ -96,10 +96,10 @@ def send_text(chat_id, content, user_bot_token, message_thread_id):
     return requests.get(endpoint)
 
 
-def delete_message(chat_id, previous_message_id, user_bot_token):
+def delete_message(chat_id, previous_message_id, user_bot_token=None):
     if user_bot_token is None:
         user_bot_token = TELEGRAM_BOT_TOKEN
-    for message_id in previous_message_id.split(";"):
+    for message_id in str(previous_message_id).split(";"):
         endpoint = "https://api.telegram.org/bot{}/deleteMessage?chat_id={}&message_id={}".format(
             user_bot_token, chat_id, message_id
         )

@@ -94,10 +94,10 @@ async def toggle_pause_job(update, context: ContextTypes.DEFAULT_TYPE):
     }
     if new_option_value == "":  # calculate next run
         crontab = entry.get("crontab")
-        _, crontab_payload, has_err = await actions.prepare_crontab_update(
+        _, crontab_payload, err = await actions.prepare_crontab_update(
             update, crontab, db_service
         )
-        if has_err:
+        if err is not None:
             return await replies.send_attribute_change_error_message(update)
         payload = {
             "nextrun_ts": crontab_payload["nextrun_ts"],
@@ -118,10 +118,10 @@ async def handle_edit_content(update, context: ContextTypes.DEFAULT_TYPE):
 
     if attr == attr_cron:
         crontab = update.message.text
-        _, payload, has_err = await actions.prepare_crontab_update(
+        _, payload, err = await actions.prepare_crontab_update(
             update, crontab, db_service
         )
-        if has_err:
+        if err is not None:
             return state2
         mongo_key = "crontab"
 

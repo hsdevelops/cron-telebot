@@ -2,6 +2,7 @@ from telegram.ext._contexttypes import ContextTypes
 
 from bot.actions import actions
 from bot.replies import replies
+from teleapi import endpoints as teleapi
 
 
 async def handle_messages(update, context: ContextTypes.DEFAULT_TYPE):
@@ -18,26 +19,31 @@ async def handle_messages(update, context: ContextTypes.DEFAULT_TYPE):
         return
     text = reply_to_message.text_html
     if text == replies.request_jobname_message:
-        await actions.add_new_job(update, context)
+        err = await actions.add_new_job(update, context)
     elif text == replies.request_text_message:
-        await actions.add_message(update, context)
+        err = await actions.add_message(update, context)
     elif text == replies.delete_message:
-        await actions.remove_job(update, context)
+        err = await actions.remove_job(update, context)
     elif text == replies.start_message:
-        await actions.add_timezone(update)
+        err = await actions.add_timezone(update)
     elif text == replies.list_jobs_message:
-        await actions.show_job_details(update, context)
+        err = await actions.show_job_details(update, context)
     elif text == replies.checkcron_message:
-        await actions.decrypt_cron(update)
+        err = await actions.decrypt_cron(update)
     elif text == replies.request_jobs_message:
-        await actions.add_new_jobs(update, context)
+        err = await actions.add_new_jobs(update, context)
     elif (
         text == replies.request_crontab_message
         or text == replies.invalid_crontab_message
     ):
-        await actions.update_crontab(update, context)
+        err = await actions.update_crontab(update, context)
     elif text == replies.change_timezone_message:
-        await actions.update_timezone(update, context)
+        err = await actions.update_timezone(update, context)
+    else:
+        err = None
+
+    if err is None:
+        teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
 async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
@@ -51,8 +57,11 @@ async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
     reply_to_message = update.message.reply_to_message
     if reply_to_message is None:
         return
+
     if reply_to_message.text_html == replies.request_text_message:
-        await actions.add_message(update, context, True)
+        err = await actions.add_message(update, context, True)
+        if err is None:
+            teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
 async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
@@ -74,9 +83,11 @@ async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if reply_to_message.text_html == replies.request_text_message:
-        await actions.add_message(
+        err = await actions.add_message(
             update=update, context=context, photo=False, poll=True
         )
+        if err is None:
+            teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
 async def handle_callback(update, context: ContextTypes.DEFAULT_TYPE):
