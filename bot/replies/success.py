@@ -9,7 +9,7 @@ timezone_change_success_message = (
 reset_success_messge = "Yeet! No more recurring messages in this chat."
 jobs_creation_success_message = "The following recurring messages are created, /list to view all messages and their details:\n"
 attribute_change_success_message = "Yipee! Your recurring message is updated successfully.\n\n/list to view all messages and their details."
-sender_change_success_message = "Sender for %s is now %s. \n\nRemember to add %s into the channel as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>."
+sender_change_success_message = "Sender for %s is now %s. \n\nRemember to add %s into the group/channel as an admin and enable:\n1. <i>Change Group/Channel Info</i> and\n2. <i>Post Messages</i>."
 sender_reset_success_message = (
     "Sender has been reset to default for chat. /changesender to set a new sender."
 )
