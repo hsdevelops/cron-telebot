@@ -34,20 +34,29 @@ def test_extract_jobs():
     30 8 * * 1 Normal job
     30 8 * 2 Error
     30 8 * * 2,4,5 Multiple days
+    Dummy
     * * * * * Every minute
     """
 
     res = utils.extract_jobs(text)
-    assert len(res) == 3
+    assert len(res) == 5
 
     crontab, content = res[0]
     assert crontab == "30 8 * * 1"
     assert content == "Normal job"
 
     crontab, content = res[1]
+    assert crontab == "30 8 * 2 Error"
+    assert content == ""
+
+    crontab, content = res[2]
     assert crontab == "30 8 * * 2,4,5"
     assert content == "Multiple days"
 
-    crontab, content = res[2]
+    crontab, content = res[3]
+    assert crontab == "Dummy"
+    assert content == ""
+
+    crontab, content = res[4]
     assert crontab == "* * * * *"
     assert content == "Every minute"

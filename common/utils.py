@@ -22,18 +22,17 @@ def extract_tz_values(text):
     return re.match("^(?:UTC)?(([+-])(1[0-4]|0[0-9]|[0-9])(?::([0-5][0-9]))?)$", text)
 
 
-def extract_jobs(text):
-    rx_seq = re.compile(
-        r"""(
-            (?:\*|[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])\s    # Year
-            (?:\*|[0-9]|1[0-9]|2[0-3])\s                         # Month
-            (?:\*|[1-9]|1[0-9]|2[0-9]|3[0-1])\s                  # Day
-            (?:\*|[1-9]|1[0-2])\s                                # Hour
-            (?:\*|[0-6](?:,\s*[0-6])*)                           # Weekday
-        )\s(.*)(?:\n)?""",
-        re.MULTILINE | re.VERBOSE,
-    )
-    return re.findall(rx_seq, text)
+def extract_jobs(text: str):
+    lines = text.split("\n")
+    res = []
+    for line in lines:
+        words = line.strip().split()
+        if len(words) == 0:
+            continue
+        crontab = " ".join(words[:5])
+        content = " ".join(words[5:])
+        res.append((crontab, content))
+    return res
 
 
 def calc_tz(tz_values):
