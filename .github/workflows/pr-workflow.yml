@@ -1,17 +1,18 @@
 name: Deploy to uat (PR)
 on:
-  pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-    branches:
-      - main
-  # push:
+  # pull_request:
+  #   types:
+  #     - opened
+  #     - edited
+  #     - synchronize
   #   branches:
-  #     - '**'      # matches every branch
-  #     - '!uat'    # excludes uat
-  #     - '!main'   # excludes main
+  #     - main
+  push:
+    branches:
+      - 'deploy-uat'
+      # - '**'      # matches every branch
+      # - '!uat'    # excludes uat
+      # - '!main'   # excludes main
 jobs:
   deploy:
     permissions: write-all

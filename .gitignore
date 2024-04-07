@@ -4,6 +4,7 @@
 __pycache__
 
 venv/
+env/
 logs/
 scripts/*
 prometheus/
@@ -17,5 +18,3 @@ photo-*
 
 !scripts/revive.py
 .*
-
-env/

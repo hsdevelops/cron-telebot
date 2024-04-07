@@ -1,6 +1,14 @@
 name: Run pytest
 
-on: [push]
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+    branches:
+      - main
+  push:
 
 jobs:
   build:
