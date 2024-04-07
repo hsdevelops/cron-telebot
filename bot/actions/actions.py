@@ -204,7 +204,7 @@ async def add_new_jobs(update, context: ContextTypes.DEFAULT_TYPE):
         await replies.send_error_message(update)
 
 
-async def add_timezone(update):
+async def add_timezone(update, context):
     # check validity
     tz_values = utils.extract_tz_values(update.message.text)
     if not tz_values:

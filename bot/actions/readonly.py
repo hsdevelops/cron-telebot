@@ -27,7 +27,7 @@ async def show_job_details(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_job_details(update, entry, bot_name)
 
 
-async def decrypt_cron(update):
+async def decrypt_cron(update, context):
     try:
         description = get_description(update.message.text).lower()
     except Exception:  # crontab is not valid
