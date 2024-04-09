@@ -2,6 +2,68 @@ import re
 import config
 from croniter import croniter
 from datetime import datetime, timezone, timedelta
+from telegram import Update, Message, MaybeInaccessibleMessage
+from typing import Optional, Union
+
+
+def get_user_id_from_update(update: Update) -> Optional[int]:
+    message = update.message
+    if message is None:
+        return None
+
+    from_user = message.from_user
+    if from_user is None:
+        return None
+    return from_user.id
+
+
+def get_chat_id_from_update(update: Update) -> Optional[int]:
+    message = update.message
+    if message is None:
+        return None
+
+    return message.chat.id
+
+
+def get_msg_text_from_update(update: Update) -> Optional[str]:
+    message = update.message
+    if message is None:
+        return None
+
+    return message.text
+
+
+def get_chat_type_from_update(update: Update) -> Optional[str]:
+    message = update.message
+    if message is None:
+        return None
+
+    return message.chat.type
+
+def get_text_html_from_update(update: Update) -> Optional[str]:
+    message = update.message
+    if message is None:
+        return None
+
+    return message.text_html
+
+
+def get_poll_type_from_update(update: Update) -> Optional[str]:
+    message = update.message
+    if message is None:
+        return None
+
+    poll = message.poll
+    if poll is None:
+        return None
+
+    return poll.type
+
+
+def get_message_from_update(update: Update) -> Optional[MaybeInaccessibleMessage]:
+    if update.callback_query is None:
+        return None
+    return update.callback_query.message
 
 
 def calc_next_run(crontab, user_tz_offset):

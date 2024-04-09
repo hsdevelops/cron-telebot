@@ -4,38 +4,47 @@ from bot.convos import config_chat, edit
 from bot.replies import replies
 from database import mongo
 from database.dbutils import dbutils
+from common import utils
 from bot.actions import permissions
 
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
-async def start(update, _: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to create new job
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    if dbutils.find_chat_by_chatid(db_service, chat_id) is None:
         return await replies.send_start_message(update)
 
     await replies.send_simple_prompt_message(update)
 
 
-async def help(update, _: ContextTypes.DEFAULT_TYPE):
+async def help(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
     await replies.send_help_message(update)
 
 
-async def checkcron(update, _: ContextTypes.DEFAULT_TYPE):
+async def checkcron(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /checkcron is issued."""
     await replies.send_checkcron_message(update)
 
 
-async def add(update, context: ContextTypes.DEFAULT_TYPE):
+async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /add is issued."""
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to create new job
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    if dbutils.find_chat_by_chatid(db_service, chat_id) is None:
         return await replies.send_start_message(update)
 
     rights = await permissions.check_rights(update, context, db_service)
@@ -43,7 +52,10 @@ async def add(update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # person limit
-    user_id = update.message.from_user.id
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
+
     job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
         return await replies.send_exceed_limit_error_message(update, user_limit)
@@ -51,12 +63,16 @@ async def add(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_request_jobname_message(update)
 
 
-async def add_multiple(update, context: ContextTypes.DEFAULT_TYPE):
+async def add_multiple(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /addmultiple is issued."""
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to create new job
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    if dbutils.find_chat_by_chatid(db_service, chat_id) is None:
         return await replies.send_start_message(update)
 
     rights = await permissions.check_rights(update, context, db_service)
@@ -64,7 +80,10 @@ async def add_multiple(update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # person limit
-    user_id = update.message.from_user.id
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
+
     job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
         return await replies.send_exceed_limit_error_message(update, user_limit)
@@ -72,44 +91,62 @@ async def add_multiple(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_request_jobs_message(update)
 
 
-async def delete(update, context: ContextTypes.DEFAULT_TYPE):
+async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /delete is issued."""
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    entries = dbutils.find_entries_by_chatid(db_service, chat_id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 
     await replies.send_delete_message(update, entries)
 
 
-async def list_jobs(update, context: ContextTypes.DEFAULT_TYPE):
+async def list_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /list is issued."""
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    entries = dbutils.find_entries_by_chatid(
+        db_service, chat_id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 
     await replies.send_list_jobs_message(update, entries)
 
 
-async def list_options(update, _: ContextTypes.DEFAULT_TYPE):
+async def list_options(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /options is issued."""
-    is_group = update.message.chat.type in ["group", "supergroup"]
+
+    chat_type = utils.get_chat_type_from_update(update)
+    if chat_type is None:
+        return
+
+    is_group = chat_type in ["group", "supergroup"]
     if is_group:
         await replies.send_list_options_message(update)
 
 
-async def option_restrict_to_admins(update, context: ContextTypes.DEFAULT_TYPE):
+async def option_restrict_to_admins(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /adminsonly is issued."""
-    if update.message.chat.type not in ["group", "supergroup"]:
+    chat_type = utils.get_chat_type_from_update(update)
+    if chat_type is None:
+        return
+
+    if chat_type not in ["group", "supergroup"]:
         return
 
     db_service = mongo.MongoService(update)
@@ -119,10 +156,13 @@ async def option_restrict_to_admins(update, context: ContextTypes.DEFAULT_TYPE):
     return await permissions.restrict_to_admins(update, db_service)
 
 
-async def option_restrict_to_user(update, context: ContextTypes.DEFAULT_TYPE):
+async def option_restrict_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /creatoronly is issued."""
+    chat_type = utils.get_chat_type_from_update(update)
+    if chat_type is None:
+        return
 
-    if update.message.chat.type not in ["group", "supergroup"]:
+    if chat_type not in ["group", "supergroup"]:
         return
 
     db_service = mongo.MongoService(update)
@@ -133,12 +173,16 @@ async def option_restrict_to_user(update, context: ContextTypes.DEFAULT_TYPE):
     return await permissions.restrict_to_user(update, db_service)
 
 
-async def change_tz(update, context: ContextTypes.DEFAULT_TYPE):
+async def change_tz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /changetz is issued."""
     db_service = mongo.MongoService(update)
 
     # timezone must be defined in order to change tz
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    if dbutils.find_chat_by_chatid(db_service, chat_id) is None:
         return await replies.send_start_message(update)
 
     rights = await permissions.check_rights(update, context, db_service)
@@ -153,8 +197,11 @@ async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE):
     db_service = mongo.MongoService(update)
 
     # find groups/private/channel created by user
-    user_id = update.message.from_user.id
-    chat_type = update.message.chat.type
+    user_id = utils.get_user_id_from_update(update)
+    chat_type = utils.get_chat_type_from_update(update)
+
+    if chat_type is None and user_id is None:
+        return
 
     if chat_type != "private":
         return await replies.send_private_only_error_message(update)
@@ -167,21 +214,25 @@ async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE):
     return config_chat.state0
 
 
-async def reset(update, context: ContextTypes.DEFAULT_TYPE):
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /reset is issued."""
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    entries = dbutils.find_entries_by_chatid(db_service, chat_id)
     if len(entries) <= 0:  # there must be at least one job available
         return await replies.send_simple_prompt_message(update)
 
     await replies.send_reset_confirmation_message(update)
 
 
-async def edit_job(update, context: ContextTypes.DEFAULT_TYPE):
+async def edit_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /edit is issued."""
 
     db_service = mongo.MongoService(update)
@@ -189,9 +240,20 @@ async def edit_job(update, context: ContextTypes.DEFAULT_TYPE):
     if not rights:
         return
 
-    context.user_data["user_id"] = update.message.from_user.id
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    if context.user_data is None:
+        return
+
+    context.user_data["user_id"] = user_id
+
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    entries = dbutils.find_entries_by_chatid(db_service, chat_id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 

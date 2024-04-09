@@ -5,6 +5,8 @@ from bot.actions import actions
 from bot.replies import replies
 from bot.types import MESSAGE_HANDLER
 from teleapi import endpoints as teleapi
+from telegram import Update
+from common import utils
 
 message_handler_map: Dict[str, MESSAGE_HANDLER] = {
     replies.request_jobname_message: actions.add_new_job,
@@ -20,16 +22,17 @@ message_handler_map: Dict[str, MESSAGE_HANDLER] = {
 }
 
 
-async def handle_messages(update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message is None:
+async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if message is None:
         return
 
     # job creation for channels
-    if update.message.forward_from_chat is not None:
+    if message.forward_from_chat is not None:
         return await actions.add_new_channel_job(update)
 
     # job creation for groups/private chats
-    reply_to_message = update.message.reply_to_message
+    reply_to_message = message.reply_to_message
     if reply_to_message is None:
         return
 
@@ -41,20 +44,21 @@ async def handle_messages(update, context: ContextTypes.DEFAULT_TYPE):
     err = await handler(update, context)
     if err is None:
         teleapi.delete_message(
-            update.message.chat.id,
+            message.chat.id,
             reply_to_message.message_id,
         )
 
 
-async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message is None:
+async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if message is None:
         return
 
     # job creation for channels
-    if update.message.forward_from_chat is not None:
+    if message.forward_from_chat is not None:
         return await actions.add_new_channel_job(update)
 
-    reply_to_message = update.message.reply_to_message
+    reply_to_message = message.reply_to_message
     if reply_to_message is None:
         return
 
@@ -62,24 +66,27 @@ async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
         err = await actions.add_message(update, context, True)
         if err is None:
             teleapi.delete_message(
-                update.message.chat.id, reply_to_message.message_id)
+                message.chat.id, reply_to_message.message_id)
 
 
-async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message is None:
+async def handle_polls(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if message is None:
         return
 
     # job creation for channels
-    is_channel_job = update.message.forward_from_chat is not None
-    if update.message.poll.type == "quiz" and (
-        update.message.chat.type != "private" or is_channel_job
-    ):
+    poll_type = utils.get_poll_type_from_update(update)
+    if poll_type is None:
+        return
+
+    is_channel_job = message.forward_from_chat is not None
+    if poll_type == "quiz" and (message.chat.type != "private" or is_channel_job):
         return await replies.send_quiz_unavailable_message(update)
 
     if is_channel_job:
         return await actions.add_new_channel_job(update=update, poll=True)
 
-    reply_to_message = update.message.reply_to_message
+    reply_to_message = message.reply_to_message
     if reply_to_message is None:
         return
 
@@ -89,14 +96,26 @@ async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
         )
         if err is None:
             teleapi.delete_message(
-                update.message.chat.id, reply_to_message.message_id)
+                message.chat.id, reply_to_message.message_id)
 
 
-async def handle_callback(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if query is None:
+        return
+
+    message = query.message
+    if message is None:
+        return
+
     if query.data == "1":
         await actions.reset_chat(update, context)
+
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
     await context.bot.editMessageReplyMarkup(
-        chat_id=query.message.chat_id, message_id=query.message.message_id
+        chat_id=chat_id, message_id=message.message_id
     )
     await query.answer()

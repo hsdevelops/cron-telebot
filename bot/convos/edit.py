@@ -1,3 +1,4 @@
+from telegram import Update
 from telegram.ext import ConversationHandler
 from telegram.ext._contexttypes import ContextTypes
 from bot.actions import actions
@@ -6,6 +7,7 @@ from common.enums import ContentType
 from database import mongo
 from database.dbutils import dbutils
 from common import log, utils
+from typing import Optional, Dict, Any
 import jsons
 
 state0, state1, state2, state3, state4 = range(5)
@@ -27,13 +29,26 @@ attrs = [
 ]
 
 # state 0
-async def choose_job(update, context: ContextTypes.DEFAULT_TYPE):
-    db_service = mongo.MongoService(update)
-    jobname = str(update.message.text)
 
-    if not dbutils.entry_exists(db_service, update.message.chat.id, jobname):
+
+async def choose_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+    msg_txt = utils.get_msg_text_from_update(update)
+    if msg_txt is None:
+        return
+
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    db_service = mongo.MongoService(update)
+    jobname = str(msg_txt)
+
+    if not dbutils.entry_exists(db_service, chat_id, jobname):
         await replies.send_error_message(update)
         return state0
+
+    if context.user_data is None:
+        return
 
     context.user_data["jobname"] = jobname
     await replies.send_choose_attribute_message(update)
@@ -41,8 +56,16 @@ async def choose_job(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 1
-async def choose_attribute(update, context: ContextTypes.DEFAULT_TYPE):
-    attr = str(update.message.text)
+async def choose_attribute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg_txt = utils.get_msg_text_from_update(update)
+    if msg_txt is None:
+        return
+
+    attr = str(msg_txt)
+
+    if context.user_data is None:
+        return
+
     context.user_data["attribute"] = attr
 
     if attr not in attrs:
@@ -69,36 +92,67 @@ async def choose_attribute(update, context: ContextTypes.DEFAULT_TYPE):
     return state2
 
 
-async def toggle_delete_previous(update, context: ContextTypes.DEFAULT_TYPE):
-    jobname, chat_id = context.user_data["jobname"], update.message.chat.id
+async def toggle_delete_previous(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
+
+    if context.user_data is None:
+        return
+
+    jobname = context.user_data["jobname"]
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
-    new_option_value = "" if entry.get("option_delete_previous", "") != "" else True
+    new_option_value = "" if entry.get(
+        "option_delete_previous", "") != "" else True
     payload = {
         "option_delete_previous": new_option_value,
-        "last_updated_by": update.message.from_user.id,
+        "last_updated_by": user_id,
     }
     dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
     log.log_option_updated(payload, "option_delete_previous", jobname, chat_id)
     await replies.send_attribute_change_success_message(update)
 
 
-async def toggle_pause_job(update, context: ContextTypes.DEFAULT_TYPE):
-    jobname, chat_id = context.user_data["jobname"], update.message.chat.id
+async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
+
+    if context.user_data is None:
+        return
+
+    jobname = context.user_data["jobname"]
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
     new_option_value = "" if entry.get("paused_ts", "") != "" else utils.now()
     payload = {
         "paused_ts": new_option_value,
-        "last_updated_by": update.message.from_user.id,
+        "last_updated_by": user_id,
     }
     if new_option_value == "":  # calculate next run
         crontab = entry.get("crontab")
-        _, crontab_payload, err = await actions.prepare_crontab_update(
+        res = await actions.prepare_crontab_update(
             update, crontab, db_service
         )
+        if res is None:
+            return
+
+        _, crontab_payload, err = res
         if err is not None:
             return await replies.send_attribute_change_error_message(update)
+
+        if crontab_payload is None:
+            return await replies.send_attribute_change_error_message(update)
+
         payload = {
             "nextrun_ts": crontab_payload["nextrun_ts"],
             "user_nextrun_ts": crontab_payload["user_nextrun_ts"],
@@ -110,17 +164,29 @@ async def toggle_pause_job(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 2
-async def handle_edit_content(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_edit_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    if context.user_data is None:
+        return
 
     jobname, attr = context.user_data["jobname"], context.user_data["attribute"]
-    chat_id = update.message.chat.id
     db_service = mongo.MongoService(update)
 
     if attr == attr_cron:
-        crontab = update.message.text
-        _, payload, err = await actions.prepare_crontab_update(
+        crontab = utils.get_msg_text_from_update(update)
+        if crontab is None:
+            return
+
+        res = await actions.prepare_crontab_update(
             update, crontab, db_service
         )
+        if res is None:
+            return
+
+        _, payload, err = res
         if err is not None:
             return state2
         mongo_key = "crontab"
@@ -134,9 +200,17 @@ async def handle_edit_content(update, context: ContextTypes.DEFAULT_TYPE):
         if old_content_type == ContentType.POLL.value:
             content_type = ContentType.TEXT.value
 
+        user_id = utils.get_user_id_from_update(update)
+        if user_id is None:
+            return
+
+        text_html = utils.get_text_html_from_update(update)
+        if text_html is None:
+            return
+
         payload = {
-            "last_updated_by": update.message.from_user.id,
-            "content": update.message.text_html,
+            "last_updated_by": user_id,
+            "content": text_html,
             "content_type": content_type,
         }
 
@@ -146,15 +220,29 @@ async def handle_edit_content(update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def handle_edit_poll(update, context: ContextTypes.DEFAULT_TYPE):
-    jobname, chat_id = context.user_data["jobname"], update.message.chat.id
+async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
+
+    if context.user_data is None:
+        return
+
+    jobname = context.user_data["jobname"]
 
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
-    poll_json = update.message.poll
+    poll_json = utils.get_poll_type_from_update(update)
+    if poll_json is None:
+        return
+
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
+
     payload = {
-        "last_updated_by": update.message.from_user.id,
+        "last_updated_by": user_id,
         "content": jsons.dumps(poll_json),
         "content_type": ContentType.POLL.value,
     }
@@ -166,20 +254,34 @@ async def handle_edit_poll(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 3
-async def handle_add_photo(update, context: ContextTypes.DEFAULT_TYPE):
-    jobname, chat_id = context.user_data["jobname"], update.message.chat.id
+async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
 
+    if context.user_data is None:
+        return
+
+    jobname = context.user_data["jobname"]
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
-    payload = {"last_updated_by": update.message.from_user.id}
+    user_id = utils.get_user_id_from_update(update)
+    if user_id is None:
+        return
+
+    message = update.message
+    if message is None:
+        return
+
+    payload: Dict[str, Any] = {"last_updated_by": user_id}
     if entry.get("photo_id", "") == "":
-        payload["photo_id"] = update.message.photo[-1].file_id
+        payload["photo_id"] = message.photo[-1].file_id
         payload["content_type"] = ContentType.PHOTO.value
     else:  # photo group
         payload["content_type"] = ContentType.MEDIA.value
         payload["photo_group_id"] = "-"
-        photo_id = update.message.photo[-1].file_id
+        photo_id = message.photo[-1].file_id
         photo_ids = "{};{}".format(entry.get("photo_id", ""), photo_id)
         payload["photo_id"] = photo_ids
     dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
@@ -190,10 +292,20 @@ async def handle_add_photo(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 4
-async def handle_clear_photos(update, context: ContextTypes.DEFAULT_TYPE):
-    jobname, chat_id = context.user_data["jobname"], update.message.chat.id
-    res = await update.message.text.lower()
+async def handle_clear_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = utils.get_chat_id_from_update(update)
+    if chat_id is None:
+        return
 
+    if context.user_data is None:
+        return
+
+    jobname = context.user_data["jobname"]
+    res = utils.get_msg_text_from_update(update)
+    if res is None:
+        return
+
+    res = res.lower()
     if res == "no":
         return end_convo(update, context)
 
@@ -205,8 +317,12 @@ async def handle_clear_photos(update, context: ContextTypes.DEFAULT_TYPE):
             await replies.send_no_photos_to_delete_error_message(update)
             return ConversationHandler.END
 
+        user_id = utils.get_user_id_from_update(update)
+        if user_id is None:
+            return
+
         payload = {
-            "last_updated_by": update.message.from_user.id,
+            "last_updated_by": user_id,
             "content_type": ContentType.TEXT.value,
             "photo_id": "",
             "photo_group_id": "",
@@ -220,6 +336,6 @@ async def handle_clear_photos(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_error_message(update)
 
 
-async def end_convo(update, _: ContextTypes.DEFAULT_TYPE):
+async def end_convo(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     await replies.send_convo_ended_message(update)
     return ConversationHandler.END

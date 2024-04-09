@@ -17,7 +17,7 @@ from bot.convos import handlers as convo_handlers
 from common.log import logger
 
 
-async def error(update, context: ContextTypes.DEFAULT_TYPE):
+async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
