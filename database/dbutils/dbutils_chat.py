@@ -8,7 +8,9 @@ Getters
 """
 
 
-def find_chat_by_chatid(db_service: MongoService, chat_id):
+def find_chat_by_chatid(db_service: MongoService, chat_id: Optional[int]):
+    if chat_id is None:
+        return None
     q = {"chat_id": float(chat_id)}
     return db_service.find_one_chat_entry(q)
 
@@ -61,7 +63,7 @@ def add_chat_data(
 
 
 def update_chats_tz_by_type(
-    db_service: MongoService, user_id: int, tz_offset: float, chat_type: str, utc_tz: str = ""
+    db_service: MongoService, user_id: Optional[int], tz_offset: float, chat_type: str, utc_tz: str = ""
 ):
     payload = {
         "tz_offset": tz_offset,

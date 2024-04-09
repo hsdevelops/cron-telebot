@@ -1,4 +1,3 @@
-import asyncio
 from unittest import mock
 import pytest
 from telegram import CallbackQuery, Chat, Poll, User, Message, Update

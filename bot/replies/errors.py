@@ -26,8 +26,12 @@ missing_chats_error_message = "Please add and set up %s in a group"
 missing_bot_in_group_message = "Terminating conversation... \n\nPlease add bot into the group as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>\nbefore running /changesender."
 
 
-async def send_error_message(update: Update):
-    await update.message.reply_text(error_message)
+async def send_error_message(update: Update) -> None:
+    message = update.message
+    if message is None:
+        return
+
+    await message.reply_text(error_message)
 
 
 async def send_exceed_limit_error_message(update: Update, limit: int):

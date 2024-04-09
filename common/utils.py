@@ -40,6 +40,7 @@ def get_chat_type_from_update(update: Update) -> Optional[str]:
 
     return message.chat.type
 
+
 def get_text_html_from_update(update: Update) -> Optional[str]:
     message = update.message
     if message is None:
@@ -80,7 +81,9 @@ def calc_next_run(crontab, user_tz_offset):
     return (user_nextrun_ts, db_nextrun_ts)
 
 
-def extract_tz_values(text):
+def extract_tz_values(text: Optional[str]):
+    if text is None:
+        return None
     return re.match("^(?:UTC)?(([+-])(1[0-4]|0[0-9]|[0-9])(?::([0-5][0-9]))?)$", text)
 
 

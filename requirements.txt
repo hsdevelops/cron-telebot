@@ -5,10 +5,14 @@ python-dotenv
 prometheus-client
 prometheus-fastapi-instrumentator
 psutil
-mongomock
-pytest
 requests
 pymongo
 influxdb3-python
 croniter
 cron-descriptor
+jsons
+
+pytest
+pytest-asyncio
+pytest-mock
+mongomock

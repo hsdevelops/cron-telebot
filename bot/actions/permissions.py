@@ -106,8 +106,8 @@ async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Opt
     if update.message is not None:  # text message
         return update.message.chat.id
 
-    if update.callback_query is not None:  # callback message
-        return utils.get_chat_id_from_update(update)
+    if update.callback_query is not None and update.callback_query.message is not None:  # callback message
+        return update.callback_query.message.chat.id
 
     if update.poll is not None:  # answer in Poll
         return context.bot_data[update.poll.id]

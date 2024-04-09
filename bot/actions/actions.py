@@ -462,9 +462,6 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # check validity
     msg_txt = utils.get_msg_text_from_update(update)
-    if msg_txt is None:
-        return
-
     tz_values = utils.extract_tz_values(msg_txt)
     if not tz_values:
         await replies.send_error_message(update)
@@ -476,10 +473,8 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # retrieve current chat data
     chat_id = utils.get_chat_id_from_update(update)
-    if chat_id is None:
-        return
-
     chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id)
+
     if chat_entry is None:
         await replies.send_start_message(update)
         return Exception()
@@ -493,14 +488,7 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     dbutils.update_chat_entry(db_service, chat_id, payload, "utc_tz")
 
     if chat_entry.get("chat_type", "") == "private":
-        message = update.message
-        if message is None:
-            return
-
-        from_user = message.from_user
-        if from_user is None:
-            return
-        user_id = from_user.id
+        user_id = utils.get_user_id_from_update(update)
         dbutils.update_chats_tz_by_type(
             db_service, user_id, tz_offset, "channel")
 
