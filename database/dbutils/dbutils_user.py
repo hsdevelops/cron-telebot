@@ -1,10 +1,12 @@
-from database.mongo import MongoService
 from telegram import Update
 
 from email import utils
 from common import log, utils
 from database.consts import COLLECTION_TYPE
 from typing import Any
+
+
+MongoService = Any  # Placeholder for the actual MongoService class due to cyclic imports
 
 
 """
