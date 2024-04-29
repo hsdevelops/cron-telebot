@@ -1,4 +1,4 @@
-import mongo
+from database.mongo import MongoService
 from telegram import Update
 
 from email import utils
@@ -12,7 +12,7 @@ Getters
 """
 
 
-def retrieve_user_data(db_service: mongo.MongoService, user_id: int) -> COLLECTION_TYPE:
+def retrieve_user_data(db_service: MongoService, user_id: int) -> COLLECTION_TYPE:
     q = {"user_id": float(user_id), "superseded_at": ""}
     return db_service.find_one_user(q)
 
@@ -22,7 +22,7 @@ Setters
 """
 
 
-def add_user(db_service: mongo.MongoService, user_id: int, username: str, first_name: str) -> None:
+def add_user(db_service: MongoService, user_id: int, username: str, first_name: str) -> None:
     new_doc = {
         "user_id": user_id,
         "username": username,
@@ -34,7 +34,7 @@ def add_user(db_service: mongo.MongoService, user_id: int, username: str, first_
     log.log_new_user(user_id, username)
 
 
-def supersede_user(db_service: mongo.MongoService, entry: COLLECTION_TYPE, field_changed: Any) -> None:
+def supersede_user(db_service: MongoService, entry: COLLECTION_TYPE, field_changed: Any) -> None:
     # update previous entry
     q = {"_id": entry["_id"]}
     payload = {"superseded_at": utils.now(), "field_changed": field_changed}
@@ -42,13 +42,13 @@ def supersede_user(db_service: mongo.MongoService, entry: COLLECTION_TYPE, field
     log.log_user_updated(entry)
 
 
-def refresh_user(db_service: mongo.MongoService, entry: COLLECTION_TYPE) -> None:
+def refresh_user(db_service: MongoService, entry: COLLECTION_TYPE) -> None:
     q = {"_id": entry["_id"]}
     payload = {"last_used_at": utils.now()}
     db_service.update_one_user(q, payload)
 
 
-def sync_user_data(db_service: mongo.MongoService, update: Update) -> None:
+def sync_user_data(db_service: MongoService, update: Update) -> None:
     if update.message is None:
         return
     user = retrieve_user_data(db_service, update.message.from_user.id)
