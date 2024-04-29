@@ -188,8 +188,7 @@ def log_update_prometheus(metric: int, value: float) -> None:
 # influx
 def log_influx_resp(measurement: str, field: str, value: int) -> None:
     logger.info(
-        f"[INFLUX] Updated influx, measurement={
-            measurement}, field={field}, value={value}"
+        f"[INFLUX] Updated influx, measurement={measurement}, field={field}, value={value}"
     )
 
 
