@@ -154,8 +154,7 @@ def log_firstname_updated(update: Update) -> None:
 
 def log_update_details(result: COLLECTION_TYPE) -> None:
     logger.info(
-        f"[DB] Updated mongo, matched={
-            result.matched_count}, modified={result.modified_count}",
+        f"[DB] Updated mongo, matched={result.matched_count}, modified={result.modified_count}",
     )
 
 
