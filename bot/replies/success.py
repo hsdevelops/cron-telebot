@@ -1,5 +1,6 @@
-from telegram import ReplyKeyboardRemove
+from telegram import ReplyKeyboardRemove, Update
 from telegram.constants import ParseMode
+from telegram.ext._contexttypes import ContextTypes
 
 delete_success_message = "Yeet! This job is now gone."
 restrict_success_message = "Hurray! From now on __bot_ic__ can set up recurring messages. Run the command again to toggle the restriction setting."
@@ -15,46 +16,47 @@ sender_reset_success_message = (
 )
 
 
-async def send_delete_success_message(update):
+async def send_delete_success_message(update: Update) -> None:
     await update.message.reply_text(
         delete_success_message, reply_markup=ReplyKeyboardRemove()
     )
 
 
-async def send_reset_success_message(context, chat_id):
+async def send_reset_success_message(context: ContextTypes, chat_id: int) -> None:
     await context.bot.send_message(chat_id, reset_success_messge)
 
 
-async def send_restrict_success_message(update, bot_ic):
+async def send_restrict_success_message(update: Update, bot_ic: str) -> None:
     await update.message.reply_text(
         restrict_success_message.replace("__bot_ic__", bot_ic)
     )
 
 
-async def send_timezone_change_success_message(update, utc_tz):
+async def send_timezone_change_success_message(update: Update, utc_tz: str) -> None:
     reply = timezone_change_success_message.replace("__utc_tz__", utc_tz)
     await update.message.reply_text(reply)
 
 
-async def send_jobs_creation_success_message(update, additional_text):
+async def send_jobs_creation_success_message(update: Update, additional_text: str) -> None:
     await update.message.reply_text(jobs_creation_success_message + additional_text)
 
 
-async def send_attribute_change_success_message(update):
+async def send_attribute_change_success_message(update: Update) -> None:
     await update.message.reply_text(
         attribute_change_success_message, reply_markup=ReplyKeyboardRemove()
     )
 
 
-async def send_sender_reset_success_message(update):
+async def send_sender_reset_success_message(update: Update) -> None:
     await update.message.reply_text(
         sender_reset_success_message, reply_markup=ReplyKeyboardRemove()
     )
 
 
-async def send_sender_change_success_message(update, chat_title, bot_username):
+async def send_sender_change_success_message(update: Update, chat_title: str, bot_username: str) -> None:
     await update.message.reply_text(
-        sender_change_success_message % (chat_title, bot_username, bot_username),
+        sender_change_success_message % (
+            chat_title, bot_username, bot_username),
         parse_mode=ParseMode.HTML,
         reply_markup=ReplyKeyboardRemove(),
     )

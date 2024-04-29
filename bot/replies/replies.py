@@ -11,15 +11,19 @@ from bot.replies.success import *
 from bot.replies.errors import *
 from bot.convos import edit
 from common.enums import ContentType
+from typing import List, Any
+from database.consts import QUERY_TYPE, OBJECT_TYPE
 
 # custom messages
-start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"  # html
+# html
+start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30.\n\n(swipe left to reply to this message)"
 help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/addmultiple - add multiple jobs\n/edit - edit job details\n/list - list active jobs\n/delete - delete a job\n/reset - delete all jobs\n/changetz - edit timezone\n/changesender - change sender for group\n/options - edit permissions for group\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Feeling lost?</b>\nRefer to our <a href="https://github.com/hsdevelops/cron-telebot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at <a href="mailto:hs.develops.1@gmail.com">hs.develops.1@gmail.com</a>.\n\n<b>Enjoying the bot?</b>\nYou can <a href="https://www.buymeacoffee.com/hschua">buy the creator a coffee</a>!'  # html
 delete_message = "Hey, tell me the name of the job you want to delete. Get /list of available jobs.\n\n(swipe left to reply to this message)"
 request_jobname_message = (
     "Give me your job name\n\n(swipe left to reply to this message)"
 )
-request_crontab_message = 'Give me your cron schedule expression (e.g. 4 5 * * *), click <a href="https://crontab.guru/">here</a> if you need help. Use /checkcron to check your cron expression.\n\n(swipe left to reply to this message)'  # html
+# html
+request_crontab_message = 'Give me your cron schedule expression (e.g. 4 5 * * *), click <a href="https://crontab.guru/">here</a> if you need help. Use /checkcron to check your cron expression.\n\n(swipe left to reply to this message)'
 request_text_message = (
     "Now give me what you want to send\n\n(swipe left to reply to this message)"
 )
@@ -49,7 +53,7 @@ convo_ended_message = "Terminating previous conversation...\n\n/add another recu
 reset_photos_confirmation_message = "This will clear ALL photos for this job. Proceed?"
 
 
-def prepare_keyboard(entries, field="jobname"):
+def prepare_keyboard(entries: List[QUERY_TYPE], field: str = "jobname") -> List[OBJECT_TYPE]:
     keyboard = []
     for i, entry in enumerate(entries):
         if i % 2 == 0:
@@ -59,7 +63,7 @@ def prepare_keyboard(entries, field="jobname"):
     return keyboard
 
 
-async def send_start_message(update):
+async def send_start_message(update: Update) -> None:
     await update.message.reply_text(
         reply_markup=ForceReply(selective=True),
         text=start_message,
@@ -67,25 +71,25 @@ async def send_start_message(update):
     )
 
 
-async def send_help_message(update):
+async def send_help_message(update: Update) -> None:
     await update.message.reply_text(
         help_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True
     )
 
 
-async def send_checkcron_message(update):
+async def send_checkcron_message(update: Update) -> None:
     await update.message.reply_text(
         checkcron_message, reply_markup=ForceReply(selective=True)
     )
 
 
-async def send_request_jobname_message(update):
+async def send_request_jobname_message(update: Update) -> None:
     await update.message.reply_text(
         reply_markup=ForceReply(selective=True), text=request_jobname_message
     )
 
 
-async def send_request_jobs_message(update):
+async def send_request_jobs_message(update: Update) -> None:
     await update.message.reply_text(
         reply_markup=ForceReply(selective=True),
         text=request_jobs_message,
@@ -93,11 +97,11 @@ async def send_request_jobs_message(update):
     )
 
 
-async def send_simple_prompt_message(update):
+async def send_simple_prompt_message(update: Update) -> None:
     await update.message.reply_text(simple_prompt_message)
 
 
-async def send_delete_message(update, entries):
+async def send_delete_message(update: Update, entries: List[QUERY_TYPE]) -> None:
     keyboard = prepare_keyboard(entries)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -106,7 +110,7 @@ async def send_delete_message(update, entries):
     await update.message.reply_text(delete_message, reply_markup=reply_markup)
 
 
-async def send_list_jobs_message(update, entries):
+async def send_list_jobs_message(update: Update, entries: List[QUERY_TYPE]) -> None:
     keyboard = prepare_keyboard(entries)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -114,7 +118,7 @@ async def send_list_jobs_message(update, entries):
     await update.message.reply_text(list_jobs_message, reply_markup=reply_markup)
 
 
-async def send_choose_job_message(update, entries):
+async def send_choose_job_message(update: Update, entries: List[QUERY_TYPE]) -> None:
     keyboard = prepare_keyboard(entries)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -122,15 +126,15 @@ async def send_choose_job_message(update, entries):
     await update.message.reply_text(choose_job_message, reply_markup=reply_markup)
 
 
-async def send_choose_attribute_message(update):
-    keyboard = [edit.attrs[i : i + 2] for i in range(0, len(edit.attrs), 2)]
+async def send_choose_attribute_message(update: Update) -> None:
+    keyboard = [edit.attrs[i: i + 2] for i in range(0, len(edit.attrs), 2)]
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
     )
     await update.message.reply_text(choose_attribute_message, reply_markup=reply_markup)
 
 
-async def send_list_options_message(update):
+async def send_list_options_message(update: Update) -> None:
     await update.message.reply_text(
         list_options_message_group,
         parse_mode=ParseMode.HTML,
@@ -138,7 +142,7 @@ async def send_list_options_message(update):
     )
 
 
-async def send_reset_confirmation_message(update):
+async def send_reset_confirmation_message(update: Update) -> None:
     keyboard = [
         [
             InlineKeyboardButton("Confirm", callback_data=1),
@@ -151,7 +155,7 @@ async def send_reset_confirmation_message(update):
     )
 
 
-async def send_job_details(update, entry, bot_name):
+async def send_job_details(update: Update, entry: QUERY_TYPE, bot_name: str) -> None:
     photo_id = str(entry.get("photo_id", ""))
     content = entry.get("content", "")
 
@@ -167,7 +171,8 @@ async def send_job_details(update, entry, bot_name):
         "no" if photo_id == "" else len(photo_id.split(";")),
         "in-chat" if entry.get("channel_id", "") == "" else "channel",
         "paused" if is_paused else entry.get("user_nextrun_ts", ""),
-        "enabled" if entry.get("option_delete_previous", "") != "" else "disabled",
+        "enabled" if entry.get("option_delete_previous",
+                               "") != "" else "disabled",
         bot_name,
     )
     await update.message.reply_text(
@@ -175,7 +180,7 @@ async def send_job_details(update, entry, bot_name):
     )
 
 
-async def send_request_crontab_message(update):
+async def send_request_crontab_message(update: Update) -> None:
     await update.message.reply_text(
         reply_markup=ForceReply(selective=True),
         text=request_crontab_message,
@@ -184,7 +189,7 @@ async def send_request_crontab_message(update):
     )
 
 
-async def send_request_text_message(update):
+async def send_request_text_message(update: Update) -> None:
     await update.message.reply_text(
         reply_markup=ForceReply(selective=True),
         text=request_text_message,
@@ -193,7 +198,7 @@ async def send_request_text_message(update):
     )
 
 
-async def send_confirm_message(update, entry, cron_description):
+async def send_confirm_message(update: Update, entry: QUERY_TYPE, cron_description: str) -> None:
     content = 'message "%s"' % entry.get("content")
     if entry.get("content_type") == ContentType.POLL.value:
         content = ContentType.POLL.value
@@ -202,13 +207,14 @@ async def send_confirm_message(update, entry, cron_description):
             entry.get("jobname"),
             content,
             cron_description,
-            "" if entry.get("channel_id", "") == "" else add_to_channel_message,
+            "" if entry.get(
+                "channel_id", "") == "" else add_to_channel_message,
         ),
         parse_mode=ParseMode.HTML,
     )
 
 
-async def send_checkcron_invalid_message(update):
+async def send_checkcron_invalid_message(update: Update) -> None:
     await update.message.reply_text(
         text=checkcron_invalid_message,
         parse_mode=ParseMode.HTML,
@@ -216,34 +222,34 @@ async def send_checkcron_invalid_message(update):
     )
 
 
-async def send_checkcron_meaning_message(update, cron_description):
+async def send_checkcron_meaning_message(update: Update, cron_description: str) -> None:
     await update.message.reply_text(checkcron_meaning_message + cron_description)
 
 
-async def send_prompt_new_job_message(update):
+async def send_prompt_new_job_message(update: Update) -> None:
     await update.message.reply_text(prompt_new_job_message)
 
 
-async def send_change_timezone_message(update):
+async def send_change_timezone_message(update: Update) -> None:
     await update.message.reply_text(
         reply_markup=ForceReply(selective=True), text=change_timezone_message
     )
 
 
-async def send_convo_ended_message(update):
+async def send_convo_ended_message(update: Update) -> None:
     await update.message.reply_text(
         convo_ended_message, reply_markup=ReplyKeyboardRemove()
     )
 
 
-async def send_prompt_new_value_message(update):
+async def send_prompt_new_value_message(update: Update) -> None:
     await update.message.reply_text(
         prompt_new_value_message,
         reply_markup=ForceReply(selective=True),
     )
 
 
-async def send_reset_photos_confirmation_message(update):
+async def send_reset_photos_confirmation_message(update: Update) -> None:
     keyboard = [["yes", "no"]]
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -253,13 +259,13 @@ async def send_reset_photos_confirmation_message(update):
     )
 
 
-async def send_prompt_user_bot_message(update):
+async def send_prompt_user_bot_message(update: Update) -> None:
     await update.message.reply_text(
         prompt_user_bot_message, reply_markup=ReplyKeyboardRemove()
     )
 
 
-async def send_choose_chat_message(update, entries):
+async def send_choose_chat_message(update: Update, entries: List[QUERY_TYPE]) -> None:
     keyboard = prepare_keyboard(entries, field="chat_title")
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True

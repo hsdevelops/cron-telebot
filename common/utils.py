@@ -2,9 +2,10 @@ import re
 import config
 from croniter import croniter
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Tuple, List
 
 
-def calc_next_run(crontab, user_tz_offset):
+def calc_next_run(crontab: str, user_tz_offset: float) -> Tuple[str, str]:
     user_tz = timezone(timedelta(hours=user_tz_offset))
     user_now = datetime.now(user_tz)
     user_iter = croniter(crontab, user_now)
@@ -18,11 +19,11 @@ def calc_next_run(crontab, user_tz_offset):
     return (user_nextrun_ts, db_nextrun_ts)
 
 
-def extract_tz_values(text):
+def extract_tz_values(text: str) -> Optional[re.Match[str]]:
     return re.match("^(?:UTC)?(([+-])(1[0-4]|0[0-9]|[0-9])(?::([0-5][0-9]))?)$", text)
 
 
-def extract_jobs(text: str):
+def extract_jobs(text: str) -> List[Tuple[str, str]]:
     lines = text.split("\n")
     res = []
     for line in lines:
@@ -35,7 +36,7 @@ def extract_jobs(text: str):
     return res
 
 
-def calc_tz(tz_values):
+def calc_tz(tz_values: re.Match) -> Tuple[str, float]:
     match_groups = tz_values.groups()
     utc_tz = str(match_groups[0])
     sign = match_groups[1]
@@ -54,5 +55,5 @@ def parse_time_millis(datetime_obj: datetime) -> str:
     return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
 
 
-def now():
+def now() -> str:
     return parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))

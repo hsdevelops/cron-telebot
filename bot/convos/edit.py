@@ -1,3 +1,4 @@
+from telegram import Update
 from telegram.ext import ConversationHandler
 from telegram.ext._contexttypes import ContextTypes
 from bot.actions import actions
@@ -7,6 +8,7 @@ from database import mongo
 from database.dbutils import dbutils
 from common import log, utils
 import jsons
+from typing import Optional
 
 state0, state1, state2, state3, state4 = range(5)
 
@@ -27,7 +29,9 @@ attrs = [
 ]
 
 # state 0
-async def choose_job(update, context: ContextTypes.DEFAULT_TYPE):
+
+
+async def choose_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db_service = mongo.MongoService(update)
     jobname = str(update.message.text)
 
@@ -41,7 +45,7 @@ async def choose_job(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 1
-async def choose_attribute(update, context: ContextTypes.DEFAULT_TYPE):
+async def choose_attribute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     attr = str(update.message.text)
     context.user_data["attribute"] = attr
 
@@ -69,11 +73,12 @@ async def choose_attribute(update, context: ContextTypes.DEFAULT_TYPE):
     return state2
 
 
-async def toggle_delete_previous(update, context: ContextTypes.DEFAULT_TYPE):
+async def toggle_delete_previous(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
-    new_option_value = "" if entry.get("option_delete_previous", "") != "" else True
+    new_option_value = "" if entry.get(
+        "option_delete_previous", "") != "" else True
     payload = {
         "option_delete_previous": new_option_value,
         "last_updated_by": update.message.from_user.id,
@@ -83,7 +88,7 @@ async def toggle_delete_previous(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_attribute_change_success_message(update)
 
 
-async def toggle_pause_job(update, context: ContextTypes.DEFAULT_TYPE):
+async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
@@ -110,8 +115,7 @@ async def toggle_pause_job(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 2
-async def handle_edit_content(update, context: ContextTypes.DEFAULT_TYPE):
-
+async def handle_edit_content(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     jobname, attr = context.user_data["jobname"], context.user_data["attribute"]
     chat_id = update.message.chat.id
     db_service = mongo.MongoService(update)
@@ -146,7 +150,7 @@ async def handle_edit_content(update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def handle_edit_poll(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service = mongo.MongoService(update)
@@ -166,7 +170,7 @@ async def handle_edit_poll(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 3
-async def handle_add_photo(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service = mongo.MongoService(update)
@@ -190,7 +194,7 @@ async def handle_add_photo(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 4
-async def handle_clear_photos(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_clear_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     res = await update.message.text.lower()
 
@@ -220,6 +224,6 @@ async def handle_clear_photos(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_error_message(update)
 
 
-async def end_convo(update, _: ContextTypes.DEFAULT_TYPE):
+async def end_convo(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     await replies.send_convo_ended_message(update)
     return ConversationHandler.END

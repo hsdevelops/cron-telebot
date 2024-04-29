@@ -1,16 +1,19 @@
-import gc, psutil
+import gc
+import psutil
 from http import HTTPStatus
 from prometheus_client import Gauge, generate_latest
 import uvicorn
 from common import log, utils
 from common.enums import ContentType
 from database import mongo
+from database.consts import COLLECTION_TYPE
 from database.dbutils import dbutils
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from threading import Thread
 from fastapi import FastAPI, Response
 from prometheus_fastapi_instrumentator import Instrumentator
+from typing import Optional
 
 import config
 from bot.ptb import lifespan
@@ -23,12 +26,12 @@ memory_usage = Gauge("memory_usage", "Memory Usage")
 
 
 @app.get("/")
-def home():
+def home() -> str:
     return "Hello world!"
 
 
 @app.get("/metricz")
-def prom_endpoint():
+def prom_endpoint() -> Response:
     cpu_percent = psutil.cpu_percent()
     memory_percent = psutil.virtual_memory().percent
 
@@ -43,7 +46,7 @@ def prom_endpoint():
 
 @app.get("/api")
 @app.post("/api")
-def run():
+def run() -> Response:
     db_service = mongo.MongoService()
 
     now = datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
@@ -59,7 +62,7 @@ def run():
         return Response(status_code=HTTPStatus.OK)
 
     for i in range(0, len(entries), config.BATCH_SIZE):
-        batch = entries[i : i + config.BATCH_SIZE]
+        batch = entries[i: i + config.BATCH_SIZE]
         batch_jobs(db_service, batch, parsed_time)
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
@@ -69,7 +72,7 @@ def run():
     return Response(status_code=HTTPStatus.OK)
 
 
-def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str):
+def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) -> None:
     q = []
     for entry in entries:
         args = (
@@ -85,7 +88,7 @@ def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str):
         t.join()
 
 
-def process_job(db_service: mongo.MongoService, entry, parsed_time):
+def process_job(db_service: mongo.MongoService, entry: COLLECTION_TYPE, parsed_time: str) -> None:
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
     chat_id = entry.get("chat_id", "")
@@ -121,8 +124,10 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
     # calculate and update next run time
     chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id) or {}
     user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
-    user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
-    errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
+    user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
+        crontab, user_tz_offset)
+    errors = [] if err is None else [
+        *errors, {"error": err, "timestamp": parsed_time}]
 
     payload = {
         "nextrun_ts": db_nextrun_ts,
@@ -135,14 +140,14 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
 
 
 def send_message(
-    job_id,
-    chat_id,
-    content,
-    content_type,
-    photo_id,
-    photo_group_id,
-    user_bot_token,
-    message_thread_id,
+    job_id: int,
+    chat_id: int,
+    content: str,
+    content_type: str,
+    photo_id: str,
+    photo_group_id: str,
+    user_bot_token: str,
+    message_thread_id: int,
 ):
     if photo_group_id != "":  # media group
         resp = teleapi.send_media_group(
@@ -153,18 +158,22 @@ def send_message(
             chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif content_type == ContentType.POLL.value:
-        resp = teleapi.send_poll(chat_id, content, user_bot_token, message_thread_id)
+        resp = teleapi.send_poll(
+            chat_id, content, user_bot_token, message_thread_id)
     else:  # text message
-        resp = teleapi.send_text(chat_id, content, user_bot_token, message_thread_id)
+        resp = teleapi.send_text(
+            chat_id, content, user_bot_token, message_thread_id)
 
     log.log_api_send_message(job_id, chat_id, resp.status_code)
 
     if resp.status_code != 200:
-        err_msg = "Error {}: {}".format(resp.status_code, resp.json()["description"])
+        err_msg = "Error {}: {}".format(
+            resp.status_code, resp.json()["description"])
         return "", resp.status_code, err_msg
 
     if photo_group_id != "":
-        msg_ids = [str(message["message_id"]) for message in resp.json()["result"]]
+        msg_ids = [str(message["message_id"])
+                   for message in resp.json()["result"]]
         return ";".join(msg_ids), resp.status_code, None
 
     return resp.json()["result"]["message_id"], resp.status_code, None
