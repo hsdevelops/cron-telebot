@@ -6,7 +6,7 @@ import uvicorn
 from common import log, utils
 from common.enums import ContentType
 from database import mongo
-from database.consts import COLLECTION_TYPE
+from database.typing import CollectionType
 from database.dbutils import dbutils
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
@@ -88,7 +88,7 @@ def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) 
         t.join()
 
 
-def process_job(db_service: mongo.MongoService, entry: COLLECTION_TYPE, parsed_time: str) -> None:
+def process_job(db_service: mongo.MongoService, entry: CollectionType, parsed_time: str) -> None:
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
     chat_id = entry.get("chat_id", "")

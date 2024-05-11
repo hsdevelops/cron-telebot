@@ -11,8 +11,9 @@ from bot.replies.success import *
 from bot.replies.errors import *
 from bot.convos import edit
 from common.enums import ContentType
-from typing import List, Any
-from database.consts import QUERY_TYPE, OBJECT_TYPE
+from typing import List, Sequence
+from telegram import KeyboardButton
+from database.typing import QueryType, ObjectType
 
 # custom messages
 # html
@@ -53,7 +54,7 @@ convo_ended_message = "Terminating previous conversation...\n\n/add another recu
 reset_photos_confirmation_message = "This will clear ALL photos for this job. Proceed?"
 
 
-def prepare_keyboard(entries: List[QUERY_TYPE], field: str = "jobname") -> List[OBJECT_TYPE]:
+def prepare_keyboard(entries: List[QueryType], field: str = "jobname") -> ObjectType:
     keyboard = []
     for i, entry in enumerate(entries):
         if i % 2 == 0:
@@ -101,7 +102,7 @@ async def send_simple_prompt_message(update: Update) -> None:
     await update.message.reply_text(simple_prompt_message)
 
 
-async def send_delete_message(update: Update, entries: List[QUERY_TYPE]) -> None:
+async def send_delete_message(update: Update, entries: List[QueryType]) -> None:
     keyboard = prepare_keyboard(entries)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -110,7 +111,7 @@ async def send_delete_message(update: Update, entries: List[QUERY_TYPE]) -> None
     await update.message.reply_text(delete_message, reply_markup=reply_markup)
 
 
-async def send_list_jobs_message(update: Update, entries: List[QUERY_TYPE]) -> None:
+async def send_list_jobs_message(update: Update, entries: List[QueryType]) -> None:
     keyboard = prepare_keyboard(entries)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -118,7 +119,7 @@ async def send_list_jobs_message(update: Update, entries: List[QUERY_TYPE]) -> N
     await update.message.reply_text(list_jobs_message, reply_markup=reply_markup)
 
 
-async def send_choose_job_message(update: Update, entries: List[QUERY_TYPE]) -> None:
+async def send_choose_job_message(update: Update, entries: List[QueryType]) -> None:
     keyboard = prepare_keyboard(entries)
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
@@ -155,7 +156,7 @@ async def send_reset_confirmation_message(update: Update) -> None:
     )
 
 
-async def send_job_details(update: Update, entry: QUERY_TYPE, bot_name: str) -> None:
+async def send_job_details(update: Update, entry: QueryType, bot_name: str) -> None:
     photo_id = str(entry.get("photo_id", ""))
     content = entry.get("content", "")
 
@@ -198,7 +199,7 @@ async def send_request_text_message(update: Update) -> None:
     )
 
 
-async def send_confirm_message(update: Update, entry: QUERY_TYPE, cron_description: str) -> None:
+async def send_confirm_message(update: Update, entry: QueryType, cron_description: str) -> None:
     content = 'message "%s"' % entry.get("content")
     if entry.get("content_type") == ContentType.POLL.value:
         content = ContentType.POLL.value
@@ -265,7 +266,7 @@ async def send_prompt_user_bot_message(update: Update) -> None:
     )
 
 
-async def send_choose_chat_message(update: Update, entries: List[QUERY_TYPE]) -> None:
+async def send_choose_chat_message(update: Update, entries: List[QueryType]) -> None:
     keyboard = prepare_keyboard(entries, field="chat_title")
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True

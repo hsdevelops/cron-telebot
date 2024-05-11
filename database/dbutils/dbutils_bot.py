@@ -1,6 +1,6 @@
 from database.mongo import MongoService
 from common import log
-from database.consts import COLLECTION_TYPE
+from database.typing import CollectionType
 from typing import Dict, Any
 
 """
@@ -8,7 +8,7 @@ Getters
 """
 
 
-def find_bot_by_token(db_service: MongoService, bot_token: str) -> COLLECTION_TYPE:
+def find_bot_by_token(db_service: MongoService, bot_token: str) -> CollectionType:
     q = {"token": bot_token}
     return db_service.find_one_bot(q)
 

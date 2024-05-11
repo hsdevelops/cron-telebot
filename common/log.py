@@ -1,6 +1,6 @@
 import logging
 from telegram import Update
-from database.consts import QUERY_TYPE, COLLECTION_TYPE
+from database.typing import QueryType, CollectionType
 from typing import Dict, Any
 
 logging.basicConfig(
@@ -47,7 +47,7 @@ def log_new_content_added(last_updated_by: str, jobname: str, chat_id: int) -> N
     logger.info(msg, last_updated_by, jobname, chat_id)
 
 
-def log_new_channel_jobname_added(entry: QUERY_TYPE) -> None:
+def log_new_channel_jobname_added(entry: QueryType) -> None:
     logger.info(
         '[BOT] User "%s" added jobname "%s" in channel, channel_id=%s, chat_id=%s',
         entry.get("last_updated_by"),
@@ -117,7 +117,7 @@ def log_new_user(user_id: int, username: str) -> None:
     logger.info(msg, str(user_id), username)
 
 
-def log_entry_updated(entry: QUERY_TYPE) -> None:
+def log_entry_updated(entry: QueryType) -> None:
     msg = '[DB] Updated job entry "%s", chat_id=%s'
     logger.info(msg, entry.get("jobname"), str(entry.get("chat_id")))
 
@@ -132,7 +132,7 @@ def log_chats_tz_updated_by_type(count: int, user_id: int, chat_type: str, tz_of
     logger.info(msg, count, chat_type, user_id, tz_offset)
 
 
-def log_user_updated(entry: QUERY_TYPE) -> None:
+def log_user_updated(entry: QueryType) -> None:
     msg = '[DB] Superseded user, user_id=%s, field_changed="%s"'
     logger.info(msg, entry.get("user_id"), entry.get("field_changed"))
 
@@ -152,7 +152,7 @@ def log_firstname_updated(update: Update) -> None:
     )
 
 
-def log_update_details(result: COLLECTION_TYPE) -> None:
+def log_update_details(result: CollectionType) -> None:
     logger.info(
         f"[DB] Updated mongo, matched={result.matched_count}, modified={result.modified_count}",
     )

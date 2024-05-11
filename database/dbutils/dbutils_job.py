@@ -4,7 +4,7 @@ from common.enums import ContentType
 from database.mongo import MongoService
 from common import log, utils
 from typing import List, Optional
-from database.consts import QUERY_TYPE, COLLECTION_TYPE, Any, Dict
+from database.typing import QueryType, CollectionType, Any, Dict
 
 
 """
@@ -12,7 +12,7 @@ Getters
 """
 
 
-def find_latest_entry(db_service: MongoService, chat_id: int) -> COLLECTION_TYPE:
+def find_latest_entry(db_service: MongoService, chat_id: int) -> CollectionType:
     q = {"chat_id": float(chat_id), "removed_ts": ""}
     result = db_service.find_entries(q, [("created_ts", DESCENDING)])
     if len(result) <= 0:
@@ -22,7 +22,7 @@ def find_latest_entry(db_service: MongoService, chat_id: int) -> COLLECTION_TYPE
 
 def find_entry_by_jobname(
     db_service: MongoService, chat_id: int, jobname: str, include_removed: bool = False
-) -> COLLECTION_TYPE:
+) -> CollectionType:
     q = {"chat_id": float(chat_id), "jobname": jobname}
     if not include_removed:
         q["removed_ts"] = ""
@@ -31,14 +31,14 @@ def find_entry_by_jobname(
 
 def find_entries_removed_between(
     db_service: MongoService, start_ts: str, end_ts: str, err_status: Optional[int] = None
-) -> List[QUERY_TYPE]:
+) -> List[QueryType]:
     q = {"removed_ts": {"$gte": start_ts, "$lte": end_ts}}
     if err_status is not None:
         q["errors.error"] = {"$regex": f"^Error {err_status}"}
     return db_service.find_entries(q)
 
 
-def find_entries_by_nextrun(db_service: MongoService, ts: str) -> List[COLLECTION_TYPE]:
+def find_entries_by_nextrun(db_service: MongoService, ts: str) -> List[CollectionType]:
     base_q = {"nextrun_ts": {"$lte": ts},
               "removed_ts": "", "crontab": {"$ne": ""}}
     q = {
@@ -52,7 +52,7 @@ def find_entries_by_nextrun(db_service: MongoService, ts: str) -> List[COLLECTIO
 
 def find_entries_by_content_type(
     db_service: MongoService, chat_id: int, content_type: str = ContentType.PHOTO.value
-) -> List[COLLECTION_TYPE]:
+) -> List[CollectionType]:
     q = {
         "$or": [{"chat_id": chat_id}, {"channel_id": chat_id}],
         "removed_ts": "",
@@ -61,7 +61,7 @@ def find_entries_by_content_type(
     return db_service.find_entries(q)
 
 
-def find_entries_by_chatid(db_service: MongoService, chat_id: int) -> List[COLLECTION_TYPE]:
+def find_entries_by_chatid(db_service: MongoService, chat_id: int) -> List[CollectionType]:
     q = {"chat_id": float(chat_id), "removed_ts": ""}
     return db_service.find_entries(q)
 
@@ -124,7 +124,7 @@ def add_new_entry(
     log.log_new_entry(jobname, chat_id)
 
 
-def update_entry_by_jobname(db_service: MongoService, entry: COLLECTION_TYPE, update: QUERY_TYPE):
+def update_entry_by_jobname(db_service: MongoService, entry: CollectionType, update: QueryType):
     q = {
         "created_ts": entry["created_ts"],
         "chat_id": entry["chat_id"],
@@ -135,7 +135,7 @@ def update_entry_by_jobname(db_service: MongoService, entry: COLLECTION_TYPE, up
 
 
 def update_entry_by_jobid(
-    db_service: MongoService, entry_id: int, update: QUERY_TYPE, include_removed: bool = False
+    db_service: MongoService, entry_id: int, update: QueryType, include_removed: bool = False
 ) -> Any:
     q: Dict[str, Any] = {"_id": entry_id}
     if not include_removed:
