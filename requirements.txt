@@ -12,6 +12,7 @@ croniter
 cron-descriptor
 jsons
 
+black
 pytest
 pytest-asyncio
 pytest-mock
