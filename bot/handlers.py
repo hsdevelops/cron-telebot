@@ -61,8 +61,7 @@ async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
     if reply_to_message.text_html == replies.request_text_message:
         err = await actions.add_message(update, context, True)
         if err is None:
-            teleapi.delete_message(
-                update.message.chat.id, reply_to_message.message_id)
+            teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
 async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
@@ -88,8 +87,7 @@ async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
             update=update, context=context, photo=False, poll=True
         )
         if err is None:
-            teleapi.delete_message(
-                update.message.chat.id, reply_to_message.message_id)
+            teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
 async def handle_callback(update, context: ContextTypes.DEFAULT_TYPE):
