@@ -3,8 +3,8 @@ from common import utils
 from common.enums import ContentType
 from database.mongo import MongoService
 from common import log, utils
-from typing import List, Optional
-from database.typing import QueryType, CollectionType, Any, Dict
+from typing import List, Optional, Dict, Any
+from database.typing import QueryType, CollectionType
 
 
 """
