@@ -15,7 +15,9 @@ def find_chat_by_chatid(db_service: MongoService, chat_id: int) -> CollectionTyp
     return db_service.find_one_chat_entry(q)
 
 
-def find_chat_by_title(db_service: MongoService, user_id: int, chat_title: str) -> CollectionType:
+def find_chat_by_title(
+    db_service: MongoService, user_id: int, chat_title: str
+) -> CollectionType:
     q = {"created_by": user_id, "chat_title": chat_title}
     return db_service.find_one_chat_entry(q)
 
@@ -63,19 +65,24 @@ def add_chat_data(
 
 
 def update_chats_tz_by_type(
-    db_service: MongoService, user_id: int, tz_offset: float, chat_type: str, utc_tz: str = ""
+    db_service: MongoService,
+    user_id: int,
+    tz_offset: float,
+    chat_type: str,
+    utc_tz: str = "",
 ) -> None:
-    payload = {"tz_offset": tz_offset,
-               "utc_tz": utc_tz, "updated_ts": utils.now()}
+    payload = {"tz_offset": tz_offset, "utc_tz": utc_tz, "updated_ts": utils.now()}
     q = {"created_by": user_id, "chat_type": chat_type}
     mongo_response = db_service.update_chat_entries(q, payload)
     modified_count = mongo_response.modified_count
-    log.log_chats_tz_updated_by_type(
-        modified_count, user_id, chat_type, tz_offset)
+    log.log_chats_tz_updated_by_type(modified_count, user_id, chat_type, tz_offset)
 
 
 def update_chat_entry(
-    db_service: MongoService, chat_id: int, update: Update, updated_field: str = "restriction"
+    db_service: MongoService,
+    chat_id: int,
+    update: Update,
+    updated_field: str = "restriction",
 ) -> None:
     q = {"chat_id": chat_id}
     db_service.update_one_chat_entry(q, update)

@@ -37,7 +37,9 @@ async def send_timezone_change_success_message(update: Update, utc_tz: str) -> N
     await update.message.reply_text(reply)
 
 
-async def send_jobs_creation_success_message(update: Update, additional_text: str) -> None:
+async def send_jobs_creation_success_message(
+    update: Update, additional_text: str
+) -> None:
     await update.message.reply_text(jobs_creation_success_message + additional_text)
 
 
@@ -53,10 +55,11 @@ async def send_sender_reset_success_message(update: Update) -> None:
     )
 
 
-async def send_sender_change_success_message(update: Update, chat_title: str, bot_username: str) -> None:
+async def send_sender_change_success_message(
+    update: Update, chat_title: str, bot_username: str
+) -> None:
     await update.message.reply_text(
-        sender_change_success_message % (
-            chat_title, bot_username, bot_username),
+        sender_change_success_message % (chat_title, bot_username, bot_username),
         parse_mode=ParseMode.HTML,
         reply_markup=ReplyKeyboardRemove(),
     )

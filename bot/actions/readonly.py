@@ -16,15 +16,13 @@ async def show_job_details(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     chat_id = update.message.chat.id
-    entry = dbutils.find_entry_by_jobname(
-        db_service, chat_id, update.message.text)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, update.message.text)
     if entry is None:
         await replies.send_error_message(update)
 
     bot_name = config.BOT_NAME
     if entry.get("user_bot_token") is not None:
-        bot_data = dbutils.find_bot_by_token(
-            db_service, entry.get("user_bot_token"))
+        bot_data = dbutils.find_bot_by_token(db_service, entry.get("user_bot_token"))
         bot_name = "@%s" % bot_data["username"]
 
     await replies.send_job_details(update, entry, bot_name)

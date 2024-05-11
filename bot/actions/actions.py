@@ -12,15 +12,16 @@ from bot.actions.removals import *
 from typing import Dict, Tuple, Optional, Any
 
 
-async def add_new_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[Exception]:
+async def add_new_job(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return Exception()
 
     # timezone must be defined in order to create new job
-    chat_entry = dbutils.find_chat_by_chatid(
-        db_service, update.message.chat.id)
+    chat_entry = dbutils.find_chat_by_chatid(db_service, update.message.chat.id)
     if chat_entry is None:
         await replies.send_start_message(update)
         return Exception()
@@ -52,7 +53,9 @@ async def add_new_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Opt
     log.log_new_job_added(update)
 
 
-async def add_new_channel_job(update: Update, poll: bool = False) -> Optional[Exception]:
+async def add_new_channel_job(
+    update: Update, poll: bool = False
+) -> Optional[Exception]:
     chat_id = update.message.chat.id
     # channel jobs can only be set up from private chats
     if update.message.chat.type != "private":
@@ -124,12 +127,10 @@ async def add_new_channel_job(update: Update, poll: bool = False) -> Optional[Ex
         content_type = ContentType.POLL.value
         content = update.message.poll.to_json()
 
-    photo_id = "" if len(
-        update.message.photo) < 1 else update.message.photo[-1].file_id
+    photo_id = "" if len(update.message.photo) < 1 else update.message.photo[-1].file_id
 
     # populate jobname for channels
-    jobname = generate_jobname(
-        db_service, forwarded_chat_info.title[:6], chat_id)
+    jobname = generate_jobname(db_service, forwarded_chat_info.title[:6], chat_id)
     dbutils.add_new_entry(
         db_service,
         chat_id=chat_id,
@@ -149,7 +150,9 @@ async def add_new_channel_job(update: Update, poll: bool = False) -> Optional[Ex
     await replies.send_request_crontab_message(update)
 
 
-async def add_new_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[Exception]:
+async def add_new_jobs(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -179,13 +182,11 @@ async def add_new_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Op
     for crontab, text_content in res:
         # arrange next run date and time
         try:
-            user_nextrun, db_nextrun = utils.calc_next_run(
-                crontab, user_tz_offset)
+            user_nextrun, db_nextrun = utils.calc_next_run(crontab, user_tz_offset)
         except Exception:
             continue
 
-        jobname = generate_jobname(
-            db_service, update.message.chat.type, chat_id)
+        jobname = generate_jobname(db_service, update.message.chat.type, chat_id)
         msg = update.message
         dbutils.add_new_entry(
             db_service,
@@ -201,8 +202,7 @@ async def add_new_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Op
             message_thread_id=msg.message_thread_id if msg.is_topic_message else None,
         )
 
-        successful_creation.append("%s: (%s) %s" %
-                                   (jobname, crontab, text_content))
+        successful_creation.append("%s: (%s) %s" % (jobname, crontab, text_content))
 
     if len(successful_creation) > 0:
         log.log_new_jobs_added(update, " // ".join(successful_creation))
@@ -212,7 +212,9 @@ async def add_new_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Op
         await replies.send_error_message(update)
 
 
-async def add_timezone(update: Update, _: ContextTypes.DEFAULT_TYPE) -> Optional[Exception]:
+async def add_timezone(
+    update: Update, _: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     # check validity
     tz_values = utils.extract_tz_values(update.message.text)
     if not tz_values:
@@ -304,7 +306,9 @@ async def add_message(
         await replies.send_request_crontab_message(update)
 
 
-async def prepare_crontab_update(update: Update, crontab: str, db_service: mongo.MongoService) -> Tuple[Optional[str], Optional[Dict[str, Any]], Optional[Exception]]:
+async def prepare_crontab_update(
+    update: Update, crontab: str, db_service: mongo.MongoService
+) -> Tuple[Optional[str], Optional[Dict[str, Any]], Optional[Exception]]:
     try:
         description = get_description(crontab).lower()
     except Exception:  # crontab is not valid
@@ -312,12 +316,10 @@ async def prepare_crontab_update(update: Update, crontab: str, db_service: mongo
         return None, None, Exception()
 
     # arrange next run date and time
-    chat_entry = dbutils.find_chat_by_chatid(
-        db_service, update.message.chat.id)
+    chat_entry = dbutils.find_chat_by_chatid(db_service, update.message.chat.id)
     user_tz_offset = chat_entry.get("tz_offset")
     try:
-        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
-            crontab, user_tz_offset)
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
     except Exception:
         await replies.send_invalid_crontab_message(update)
         return None, None, Exception()
@@ -332,7 +334,9 @@ async def prepare_crontab_update(update: Update, crontab: str, db_service: mongo
     return description, payload, None
 
 
-async def update_crontab(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[Exception]:
+async def update_crontab(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -364,13 +368,14 @@ async def update_crontab(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         resp, new_photo_id = teleapi.transfer_photo_between_bots(
             db_service, bot_token, None, chat_id, entry
         )
-        log.log_photo_transferred(
-            user_id, new_photo_id, chat_id, resp.status_code)
+        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.status_code)
 
     await replies.send_confirm_message(update, entry, description)
 
 
-async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[Exception]:
+async def update_timezone(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -403,26 +408,24 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if chat_entry.get("chat_type", "") == "private":
         user_id = update.message.from_user.id
-        dbutils.update_chats_tz_by_type(
-            db_service, user_id, tz_offset, "channel")
+        dbutils.update_chats_tz_by_type(db_service, user_id, tz_offset, "channel")
 
     # update job entries
-    job_entries = dbutils.find_entries_by_chatid(
-        db_service, update.message.chat.id)
+    job_entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     for job_entry in job_entries:
         if job_entry.get("nextrun_ts", "") == "":
             continue
         crontab = job_entry.get("crontab", "")
-        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
-            crontab, tz_offset)
-        payload = {"nextrun_ts": db_nextrun_ts,
-                   "user_nextrun_ts": user_nextrun_ts}
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, tz_offset)
+        payload = {"nextrun_ts": db_nextrun_ts, "user_nextrun_ts": user_nextrun_ts}
         dbutils.update_entry_by_jobname(db_service, job_entry, payload)
 
     await replies.send_timezone_change_success_message(update, utc_tz)
 
 
-def generate_jobname(db_service: mongo.MongoService, job_prefix: str, chat_id: int) -> str:
+def generate_jobname(
+    db_service: mongo.MongoService, job_prefix: str, chat_id: int
+) -> str:
     number = 1
     jobname = "%s (%d)" % (job_prefix, number)
     while dbutils.entry_exists(db_service, chat_id, jobname):

@@ -18,7 +18,9 @@ Setters
 """
 
 
-def upsert_new_bot(db_service: MongoService, user_id: int, bot_data: Dict[str, Any]) -> None:
+def upsert_new_bot(
+    db_service: MongoService, user_id: int, bot_data: Dict[str, Any]
+) -> None:
     q = {"id": bot_data["id"]}
     payload = {**bot_data}
     db_service.update_one_bot(q, payload)

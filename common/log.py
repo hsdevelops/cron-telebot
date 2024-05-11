@@ -72,7 +72,9 @@ def log_job_removed(last_updated_by: str, jobname: str, chat_id: str) -> None:
     logger.info(msg, last_updated_by, jobname, chat_id)
 
 
-def log_option_updated(updated_fields: Dict[str, Any], option: str, jobname: str, chat_id: int) -> None:
+def log_option_updated(
+    updated_fields: Dict[str, Any], option: str, jobname: str, chat_id: int
+) -> None:
     logger.info(
         '[BOT] User "%s" updated option "%s" to "%s" for job "%s", chat_id=%s',
         updated_fields["last_updated_by"],
@@ -83,7 +85,9 @@ def log_option_updated(updated_fields: Dict[str, Any], option: str, jobname: str
     )
 
 
-def log_sender_updated(user_id: int, prev_sender: str, new_sender: str, chat_id: int) -> None:
+def log_sender_updated(
+    user_id: int, prev_sender: str, new_sender: str, chat_id: int
+) -> None:
     msg = '[BOT] User "%s" updated sender from "%s" to "%s", chat_id=%s'
     logger.info(msg, user_id, prev_sender, new_sender, chat_id)
 
@@ -96,7 +100,9 @@ def log_chat_reset(update: Update) -> None:
     )
 
 
-def log_photo_transferred(user_id: int, new_photo_id: int, chat_id: int, status: int) -> None:
+def log_photo_transferred(
+    user_id: int, new_photo_id: int, chat_id: int, status: int
+) -> None:
     msg = '[BOT] User "%s" transferred photo "%s", chat_id="%d", status=%d'
     logger.info(msg, user_id, new_photo_id, chat_id, status)
 
@@ -122,12 +128,16 @@ def log_entry_updated(entry: QueryType) -> None:
     logger.info(msg, entry.get("jobname"), str(entry.get("chat_id")))
 
 
-def log_chat_entry_updated(chat_id: int, updated_field: str, updated_value: str) -> None:
+def log_chat_entry_updated(
+    chat_id: int, updated_field: str, updated_value: str
+) -> None:
     msg = '[DB] Updated chat %s to "%s", chat_id=%s'
     logger.info(msg, updated_field, updated_value, chat_id)
 
 
-def log_chats_tz_updated_by_type(count: int, user_id: int, chat_type: str, tz_offset: float) -> None:
+def log_chats_tz_updated_by_type(
+    count: int, user_id: int, chat_type: str, tz_offset: float
+) -> None:
     msg = "[DB] Bulk updated timezone for %d chats, chat_type=%s, user_id=%s, new tz_offset=%d"
     logger.info(msg, count, chat_type, user_id, tz_offset)
 
@@ -139,8 +149,7 @@ def log_user_updated(entry: QueryType) -> None:
 
 def log_username_updated(update: Update) -> None:
     msg = "[DB] Superseded username, new username=%s, user_id=%s"
-    logger.info(msg, update.message.from_user.username,
-                update.message.from_user.id)
+    logger.info(msg, update.message.from_user.username, update.message.from_user.id)
 
 
 def log_firstname_updated(update: Update) -> None:
@@ -159,7 +168,9 @@ def log_update_details(result: CollectionType) -> None:
 
 
 # api
-def log_api_previous_message_deletion(chat_id: int, message_id: str, status_code: int) -> None:
+def log_api_previous_message_deletion(
+    chat_id: int, message_id: str, status_code: int
+) -> None:
     msg = "[TELEGRAM API] Deleted previous message, response_status=%s, chat_id=%s, message_id=%s"
     logger.info(msg, status_code, chat_id, message_id)
 
@@ -170,8 +181,7 @@ def log_api_send_message(job_id: int, chat_id: int, status_code: int) -> None:
 
 
 def log_entry_count(count: int) -> None:
-    logger.info(
-        "[TELEGRAM API] Processing %d message(s) to send this time...", count)
+    logger.info("[TELEGRAM API] Processing %d message(s) to send this time...", count)
 
 
 def log_completion(total_count: int) -> None:

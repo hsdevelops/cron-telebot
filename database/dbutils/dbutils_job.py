@@ -30,7 +30,10 @@ def find_entry_by_jobname(
 
 
 def find_entries_removed_between(
-    db_service: MongoService, start_ts: str, end_ts: str, err_status: Optional[int] = None
+    db_service: MongoService,
+    start_ts: str,
+    end_ts: str,
+    err_status: Optional[int] = None,
 ) -> List[QueryType]:
     q = {"removed_ts": {"$gte": start_ts, "$lte": end_ts}}
     if err_status is not None:
@@ -39,8 +42,7 @@ def find_entries_removed_between(
 
 
 def find_entries_by_nextrun(db_service: MongoService, ts: str) -> List[CollectionType]:
-    base_q = {"nextrun_ts": {"$lte": ts},
-              "removed_ts": "", "crontab": {"$ne": ""}}
+    base_q = {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
     q = {
         "$or": [
             {"paused_ts": "", **base_q},
@@ -61,7 +63,9 @@ def find_entries_by_content_type(
     return db_service.find_entries(q)
 
 
-def find_entries_by_chatid(db_service: MongoService, chat_id: int) -> List[CollectionType]:
+def find_entries_by_chatid(
+    db_service: MongoService, chat_id: int
+) -> List[CollectionType]:
     q = {"chat_id": float(chat_id), "removed_ts": ""}
     return db_service.find_entries(q)
 
@@ -124,7 +128,9 @@ def add_new_entry(
     log.log_new_entry(jobname, chat_id)
 
 
-def update_entry_by_jobname(db_service: MongoService, entry: CollectionType, update: QueryType):
+def update_entry_by_jobname(
+    db_service: MongoService, entry: CollectionType, update: QueryType
+):
     q = {
         "created_ts": entry["created_ts"],
         "chat_id": entry["chat_id"],
@@ -135,7 +141,10 @@ def update_entry_by_jobname(db_service: MongoService, entry: CollectionType, upd
 
 
 def update_entry_by_jobid(
-    db_service: MongoService, entry_id: int, update: QueryType, include_removed: bool = False
+    db_service: MongoService,
+    entry_id: int,
+    update: QueryType,
+    include_removed: bool = False,
 ) -> Any:
     q: Dict[str, Any] = {"_id": entry_id}
     if not include_removed:

@@ -128,7 +128,7 @@ async def send_choose_job_message(update: Update, entries: List[QueryType]) -> N
 
 
 async def send_choose_attribute_message(update: Update) -> None:
-    keyboard = [edit.attrs[i: i + 2] for i in range(0, len(edit.attrs), 2)]
+    keyboard = [edit.attrs[i : i + 2] for i in range(0, len(edit.attrs), 2)]
     reply_markup = ReplyKeyboardMarkup(
         keyboard, one_time_keyboard=True, resize_keyboard=True
     )
@@ -172,8 +172,7 @@ async def send_job_details(update: Update, entry: QueryType, bot_name: str) -> N
         "no" if photo_id == "" else len(photo_id.split(";")),
         "in-chat" if entry.get("channel_id", "") == "" else "channel",
         "paused" if is_paused else entry.get("user_nextrun_ts", ""),
-        "enabled" if entry.get("option_delete_previous",
-                               "") != "" else "disabled",
+        "enabled" if entry.get("option_delete_previous", "") != "" else "disabled",
         bot_name,
     )
     await update.message.reply_text(
@@ -199,7 +198,9 @@ async def send_request_text_message(update: Update) -> None:
     )
 
 
-async def send_confirm_message(update: Update, entry: QueryType, cron_description: str) -> None:
+async def send_confirm_message(
+    update: Update, entry: QueryType, cron_description: str
+) -> None:
     content = 'message "%s"' % entry.get("content")
     if entry.get("content_type") == ContentType.POLL.value:
         content = ContentType.POLL.value
@@ -208,8 +209,7 @@ async def send_confirm_message(update: Update, entry: QueryType, cron_descriptio
             entry.get("jobname"),
             content,
             cron_description,
-            "" if entry.get(
-                "channel_id", "") == "" else add_to_channel_message,
+            "" if entry.get("channel_id", "") == "" else add_to_channel_message,
         ),
         parse_mode=ParseMode.HTML,
     )

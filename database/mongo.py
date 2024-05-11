@@ -8,7 +8,11 @@ from database.typing import QueryType, CollectionType
 
 
 class MongoService:
-    def __init__(self, update: Optional[Update] = None, conn_str: Optional[str] = config.MONGODB_CONNECTION_STRING) -> None:
+    def __init__(
+        self,
+        update: Optional[Update] = None,
+        conn_str: Optional[str] = config.MONGODB_CONNECTION_STRING,
+    ) -> None:
         # Provide the mongodb atlas url to connect python to mongodb using pymongo
 
         # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
@@ -29,7 +33,9 @@ class MongoService:
         q["last_update_ts"] = now
         self.main_collection.insert_one(q)
 
-    def find_entries(self, q: QueryType, sort: Optional[Any] = None) -> List[CollectionType]:
+    def find_entries(
+        self, q: QueryType, sort: Optional[Any] = None
+    ) -> List[CollectionType]:
         res = self.main_collection.find(q)
         if sort is not None:
             res = res.sort(sort)
@@ -38,7 +44,9 @@ class MongoService:
     def find_one_entry(self, q: QueryType) -> CollectionType:
         return self.main_collection.find_one(q)
 
-    def update_multiple_entries(self, q: QueryType, update: QueryType) -> CollectionType:
+    def update_multiple_entries(
+        self, q: QueryType, update: QueryType
+    ) -> CollectionType:
         q["removed_ts"] = ""
         update["last_update_ts"] = utils.now()
         return self.main_collection.update_many(q, {"$set": update})

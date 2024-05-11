@@ -73,12 +73,13 @@ async def choose_attribute(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return state2
 
 
-async def toggle_delete_previous(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def toggle_delete_previous(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     db_service = mongo.MongoService(update)
     entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
-    new_option_value = "" if entry.get(
-        "option_delete_previous", "") != "" else True
+    new_option_value = "" if entry.get("option_delete_previous", "") != "" else True
     payload = {
         "option_delete_previous": new_option_value,
         "last_updated_by": update.message.from_user.id,
@@ -115,7 +116,9 @@ async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 # state 2
-async def handle_edit_content(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_edit_content(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     jobname, attr = context.user_data["jobname"], context.user_data["attribute"]
     chat_id = update.message.chat.id
     db_service = mongo.MongoService(update)
@@ -194,7 +197,9 @@ async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 # state 4
-async def handle_clear_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+async def handle_clear_photos(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[int]:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     res = await update.message.text.lower()
 

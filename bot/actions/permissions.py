@@ -31,7 +31,12 @@ async def restrict_to_admins(update: Update, db_service: mongo.MongoService) -> 
     return await replies.send_restrict_success_message(update, "only group admins")
 
 
-async def check_rights(update: Update, context: ContextTypes.DEFAULT_TYPE, db_service: mongo.MongoService, must_be_admin: bool = False) -> bool:
+async def check_rights(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    db_service: mongo.MongoService,
+    must_be_admin: bool = False,
+) -> bool:
     message = update.callback_query if update.message is None else update.message
     user_id = message.from_user.id
     group_id = await get_chat_id(update, context)
@@ -88,7 +93,9 @@ async def restrict_to_user(update: Update, db_service: mongo.MongoService) -> No
     return await replies.send_restrict_success_message(update, "only you")
 
 
-async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+async def get_chat_id(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[int]:
     chat_id = -1
     if update.message is not None:  # text message
         return update.message.chat.id

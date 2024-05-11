@@ -62,7 +62,7 @@ def run() -> Response:
         return Response(status_code=HTTPStatus.OK)
 
     for i in range(0, len(entries), config.BATCH_SIZE):
-        batch = entries[i: i + config.BATCH_SIZE]
+        batch = entries[i : i + config.BATCH_SIZE]
         batch_jobs(db_service, batch, parsed_time)
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
@@ -88,7 +88,9 @@ def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) 
         t.join()
 
 
-def process_job(db_service: mongo.MongoService, entry: CollectionType, parsed_time: str) -> None:
+def process_job(
+    db_service: mongo.MongoService, entry: CollectionType, parsed_time: str
+) -> None:
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
     chat_id = entry.get("chat_id", "")
@@ -124,10 +126,8 @@ def process_job(db_service: mongo.MongoService, entry: CollectionType, parsed_ti
     # calculate and update next run time
     chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id) or {}
     user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
-    user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
-        crontab, user_tz_offset)
-    errors = [] if err is None else [
-        *errors, {"error": err, "timestamp": parsed_time}]
+    user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+    errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
 
     payload = {
         "nextrun_ts": db_nextrun_ts,
@@ -158,22 +158,18 @@ def send_message(
             chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif content_type == ContentType.POLL.value:
-        resp = teleapi.send_poll(
-            chat_id, content, user_bot_token, message_thread_id)
+        resp = teleapi.send_poll(chat_id, content, user_bot_token, message_thread_id)
     else:  # text message
-        resp = teleapi.send_text(
-            chat_id, content, user_bot_token, message_thread_id)
+        resp = teleapi.send_text(chat_id, content, user_bot_token, message_thread_id)
 
     log.log_api_send_message(job_id, chat_id, resp.status_code)
 
     if resp.status_code != 200:
-        err_msg = "Error {}: {}".format(
-            resp.status_code, resp.json()["description"])
+        err_msg = "Error {}: {}".format(resp.status_code, resp.json()["description"])
         return "", resp.status_code, err_msg
 
     if photo_group_id != "":
-        msg_ids = [str(message["message_id"])
-                   for message in resp.json()["result"]]
+        msg_ids = [str(message["message_id"]) for message in resp.json()["result"]]
         return ";".join(msg_ids), resp.status_code, None
 
     return resp.json()["result"]["message_id"], resp.status_code, None

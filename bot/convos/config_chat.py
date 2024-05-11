@@ -32,8 +32,7 @@ async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return state1
 
     # Revert back to default — both chat and jobs
-    has_err = reset_sender(
-        db_service, chat_entry["chat_id"], user_id, None, prev_token)
+    has_err = reset_sender(db_service, chat_entry["chat_id"], user_id, None, prev_token)
     if has_err:
         await replies.send_missing_bot_in_group_message(update)
         return ConversationHandler.END
@@ -73,18 +72,22 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return ConversationHandler.END
 
 
-def reset_sender(db_service: mongo.MongoService, chat_id: int, user_id: int, new_token: Optional[str], prev_token: Optional[Any] = None) -> bool:
+def reset_sender(
+    db_service: mongo.MongoService,
+    chat_id: int,
+    user_id: int,
+    new_token: Optional[str],
+    prev_token: Optional[Any] = None,
+) -> bool:
     # special case — single photos can only be sent from the same bot
-    single_photo_entries = dbutils.find_entries_by_content_type(
-        db_service, chat_id)
+    single_photo_entries = dbutils.find_entries_by_content_type(db_service, chat_id)
     for entry in single_photo_entries:
         resp, new_photo_id = teleapi.transfer_photo_between_bots(
             db_service, new_token, prev_token, chat_id, entry
         )
         if resp.status_code != 200:
             return True
-        log.log_photo_transferred(
-            user_id, new_photo_id, chat_id, resp.status_code)
+        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.status_code)
 
     # jobs
     q = {"$or": [{"chat_id": chat_id}, {"channel_id": chat_id}]}
@@ -94,8 +97,7 @@ def reset_sender(db_service: mongo.MongoService, chat_id: int, user_id: int, new
     # chat
     field = "user_bot_token"
     payload = {"user_bot_token": new_token}
-    dbutils.update_chat_entry(
-        db_service, chat_id, payload, updated_field=field)
+    dbutils.update_chat_entry(db_service, chat_id, payload, updated_field=field)
 
     log.log_sender_updated(user_id, prev_token, new_token, chat_id)
     return False

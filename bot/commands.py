@@ -80,8 +80,7 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(
-        db_service, update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 
@@ -95,8 +94,7 @@ async def list_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(
-        db_service, update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 
@@ -110,7 +108,9 @@ async def list_options(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         await replies.send_list_options_message(update)
 
 
-async def option_restrict_to_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def option_restrict_to_admins(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Send a message when the command /adminsonly is issued."""
     if update.message.chat.type not in ["group", "supergroup"]:
         return
@@ -122,7 +122,9 @@ async def option_restrict_to_admins(update: Update, context: ContextTypes.DEFAUL
     return await permissions.restrict_to_admins(update, db_service)
 
 
-async def option_restrict_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def option_restrict_to_user(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Send a message when the command /creatoronly is issued."""
 
     if update.message.chat.type not in ["group", "supergroup"]:
@@ -177,8 +179,7 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(
-        db_service, update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:  # there must be at least one job available
         return await replies.send_simple_prompt_message(update)
 
@@ -195,8 +196,7 @@ async def edit_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Option
 
     context.user_data["user_id"] = update.message.from_user.id
 
-    entries = dbutils.find_entries_by_chatid(
-        db_service, update.message.chat.id)
+    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 

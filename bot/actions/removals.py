@@ -33,8 +33,7 @@ async def remove_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     chat_id = update.message.chat.id
-    entry = dbutils.find_entry_by_jobname(
-        db_service, chat_id, update.message.text)
+    entry = dbutils.find_entry_by_jobname(db_service, chat_id, update.message.text)
 
     if entry is None:
         return await replies.send_error_message(update)
