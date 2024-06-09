@@ -1,16 +1,19 @@
-import gc, psutil
+import gc
+import psutil
 from http import HTTPStatus
 from prometheus_client import Gauge, generate_latest
 import uvicorn
 from common import log, utils
 from common.enums import ContentType
 from database import mongo
+from database.typing import CollectionType
 from database.dbutils import dbutils
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from threading import Thread
 from fastapi import FastAPI, Response
 from prometheus_fastapi_instrumentator import Instrumentator
+from typing import Optional
 
 import config
 from bot.ptb import lifespan
@@ -23,12 +26,12 @@ memory_usage = Gauge("memory_usage", "Memory Usage")
 
 
 @app.get("/")
-def home():
+def home() -> str:
     return "Hello world!"
 
 
 @app.get("/metricz")
-def prom_endpoint():
+def prom_endpoint() -> Response:
     cpu_percent = psutil.cpu_percent()
     memory_percent = psutil.virtual_memory().percent
 
@@ -43,7 +46,7 @@ def prom_endpoint():
 
 @app.get("/api")
 @app.post("/api")
-def run():
+def run() -> Response:
     db_service = mongo.MongoService()
 
     now = datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
@@ -69,7 +72,7 @@ def run():
     return Response(status_code=HTTPStatus.OK)
 
 
-def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str):
+def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) -> None:
     q = []
     for entry in entries:
         args = (
@@ -85,7 +88,9 @@ def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str):
         t.join()
 
 
-def process_job(db_service: mongo.MongoService, entry, parsed_time):
+def process_job(
+    db_service: mongo.MongoService, entry: CollectionType, parsed_time: str
+) -> None:
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
     chat_id = entry.get("chat_id", "")
@@ -135,14 +140,14 @@ def process_job(db_service: mongo.MongoService, entry, parsed_time):
 
 
 def send_message(
-    job_id,
-    chat_id,
-    content,
-    content_type,
-    photo_id,
-    photo_group_id,
-    user_bot_token,
-    message_thread_id,
+    job_id: int,
+    chat_id: int,
+    content: str,
+    content_type: str,
+    photo_id: str,
+    photo_group_id: str,
+    user_bot_token: str,
+    message_thread_id: int,
 ):
     if photo_group_id != "":  # media group
         resp = teleapi.send_media_group(

@@ -1,6 +1,7 @@
 from cron_descriptor import get_description
 from bot.actions import permissions
 from telegram.ext._contexttypes import ContextTypes
+from telegram import Update
 
 import config
 from bot.replies import replies
@@ -8,7 +9,7 @@ from database import mongo
 from database.dbutils import dbutils
 
 
-async def show_job_details(update, context: ContextTypes.DEFAULT_TYPE):
+async def show_job_details(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -27,7 +28,7 @@ async def show_job_details(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_job_details(update, entry, bot_name)
 
 
-async def decrypt_cron(update, context):
+async def decrypt_cron(update: Update, _: ContextTypes) -> None:
     try:
         description = get_description(update.message.text).lower()
     except Exception:  # crontab is not valid

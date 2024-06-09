@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import config
 from telegram.ext import Application
+from typing import AsyncGenerator
 
 # https://github.com/python-telegram-bot/python-telegram-bot/wiki/Handling-network-errors
 ptb = (
@@ -16,7 +17,7 @@ ptb = ptb.build()
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncGenerator:
     if config.BOTHOST:
         await ptb.bot.setWebhook(config.BOTHOST)
     async with ptb:

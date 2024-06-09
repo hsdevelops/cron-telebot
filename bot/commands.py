@@ -5,11 +5,12 @@ from bot.replies import replies
 from database import mongo
 from database.dbutils import dbutils
 from bot.actions import permissions
+from typing import Optional
 
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
-async def start(update, _: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     db_service = mongo.MongoService(update)
 
@@ -20,17 +21,17 @@ async def start(update, _: ContextTypes.DEFAULT_TYPE):
     await replies.send_simple_prompt_message(update)
 
 
-async def help(update, _: ContextTypes.DEFAULT_TYPE):
+async def help(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     await replies.send_help_message(update)
 
 
-async def checkcron(update, _: ContextTypes.DEFAULT_TYPE):
+async def checkcron(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /checkcron is issued."""
     await replies.send_checkcron_message(update)
 
 
-async def add(update, context: ContextTypes.DEFAULT_TYPE):
+async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /add is issued."""
     db_service = mongo.MongoService(update)
 
@@ -51,7 +52,7 @@ async def add(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_request_jobname_message(update)
 
 
-async def add_multiple(update, context: ContextTypes.DEFAULT_TYPE):
+async def add_multiple(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /addmultiple is issued."""
     db_service = mongo.MongoService(update)
 
@@ -72,7 +73,7 @@ async def add_multiple(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_request_jobs_message(update)
 
 
-async def delete(update, context: ContextTypes.DEFAULT_TYPE):
+async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /delete is issued."""
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
@@ -86,7 +87,7 @@ async def delete(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_delete_message(update, entries)
 
 
-async def list_jobs(update, context: ContextTypes.DEFAULT_TYPE):
+async def list_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /list is issued."""
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
@@ -100,14 +101,16 @@ async def list_jobs(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_list_jobs_message(update, entries)
 
 
-async def list_options(update, _: ContextTypes.DEFAULT_TYPE):
+async def list_options(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /options is issued."""
     is_group = update.message.chat.type in ["group", "supergroup"]
     if is_group:
         await replies.send_list_options_message(update)
 
 
-async def option_restrict_to_admins(update, context: ContextTypes.DEFAULT_TYPE):
+async def option_restrict_to_admins(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Send a message when the command /adminsonly is issued."""
     if update.message.chat.type not in ["group", "supergroup"]:
         return
@@ -119,7 +122,9 @@ async def option_restrict_to_admins(update, context: ContextTypes.DEFAULT_TYPE):
     return await permissions.restrict_to_admins(update, db_service)
 
 
-async def option_restrict_to_user(update, context: ContextTypes.DEFAULT_TYPE):
+async def option_restrict_to_user(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Send a message when the command /creatoronly is issued."""
 
     if update.message.chat.type not in ["group", "supergroup"]:
@@ -133,7 +138,7 @@ async def option_restrict_to_user(update, context: ContextTypes.DEFAULT_TYPE):
     return await permissions.restrict_to_user(update, db_service)
 
 
-async def change_tz(update, context: ContextTypes.DEFAULT_TYPE):
+async def change_tz(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /changetz is issued."""
     db_service = mongo.MongoService(update)
 
@@ -148,7 +153,7 @@ async def change_tz(update, context: ContextTypes.DEFAULT_TYPE):
     return await replies.send_change_timezone_message(update)
 
 
-async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """Send a message when the command /changesender is issued."""
     db_service = mongo.MongoService(update)
 
@@ -167,7 +172,7 @@ async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE):
     return config_chat.state0
 
 
-async def reset(update, context: ContextTypes.DEFAULT_TYPE):
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /reset is issued."""
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
@@ -181,7 +186,7 @@ async def reset(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_reset_confirmation_message(update)
 
 
-async def edit_job(update, context: ContextTypes.DEFAULT_TYPE):
+async def edit_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """Send a message when the command /edit is issued."""
 
     db_service = mongo.MongoService(update)

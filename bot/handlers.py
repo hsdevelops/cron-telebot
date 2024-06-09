@@ -5,6 +5,8 @@ from bot.actions import actions
 from bot.replies import replies
 from bot.types import MESSAGE_HANDLER
 from teleapi import endpoints as teleapi
+from telegram import Update
+from typing import Optional
 
 message_handler_map: Dict[str, MESSAGE_HANDLER] = {
     replies.request_jobname_message: actions.add_new_job,
@@ -20,7 +22,9 @@ message_handler_map: Dict[str, MESSAGE_HANDLER] = {
 }
 
 
-async def handle_messages(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_messages(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     if update.message is None:
         return
 
@@ -46,7 +50,9 @@ async def handle_messages(update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_photos(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     if update.message is None:
         return
 
@@ -64,7 +70,9 @@ async def handle_photos(update, context: ContextTypes.DEFAULT_TYPE):
             teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
-async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_polls(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     if update.message is None:
         return
 
@@ -90,7 +98,7 @@ async def handle_polls(update, context: ContextTypes.DEFAULT_TYPE):
             teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
 
 
-async def handle_callback(update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if query.data == "1":
         await actions.reset_chat(update, context)

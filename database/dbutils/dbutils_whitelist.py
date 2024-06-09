@@ -1,8 +1,9 @@
 import config
 from database.dbutils import dbutils
+from typing import Tuple
 
 
-def get_user_limit(db_service, user_id):
+def get_user_limit(db_service, user_id) -> Tuple[int, int]:
     current_job_count = dbutils.count_entries_by_userid(db_service, user_id)
 
     q = {"user_id": float(user_id), "removed_ts": ""}

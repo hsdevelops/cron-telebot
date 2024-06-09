@@ -5,12 +5,16 @@ from database import mongo
 from database.dbutils import dbutils
 from cron_descriptor import get_description
 from teleapi import endpoints as teleapi
+from telegram import Update
 from bot.actions import permissions
 from bot.actions.readonly import *
 from bot.actions.removals import *
+from typing import Dict, Tuple, Optional, Any
 
 
-async def add_new_job(update, context: ContextTypes.DEFAULT_TYPE):
+async def add_new_job(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -49,7 +53,9 @@ async def add_new_job(update, context: ContextTypes.DEFAULT_TYPE):
     log.log_new_job_added(update)
 
 
-async def add_new_channel_job(update, poll=False):
+async def add_new_channel_job(
+    update: Update, poll: bool = False
+) -> Optional[Exception]:
     chat_id = update.message.chat.id
     # channel jobs can only be set up from private chats
     if update.message.chat.type != "private":
@@ -144,7 +150,9 @@ async def add_new_channel_job(update, poll=False):
     await replies.send_request_crontab_message(update)
 
 
-async def add_new_jobs(update, context: ContextTypes.DEFAULT_TYPE):
+async def add_new_jobs(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -204,7 +212,9 @@ async def add_new_jobs(update, context: ContextTypes.DEFAULT_TYPE):
         await replies.send_error_message(update)
 
 
-async def add_timezone(update, context):
+async def add_timezone(
+    update: Update, _: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     # check validity
     tz_values = utils.extract_tz_values(update.message.text)
     if not tz_values:
@@ -234,7 +244,12 @@ async def add_timezone(update, context):
     await replies.send_help_message(update)
 
 
-async def add_message(update, context, photo=False, poll=False):
+async def add_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    photo: bool = False,
+    poll: bool = False,
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -291,7 +306,9 @@ async def add_message(update, context, photo=False, poll=False):
         await replies.send_request_crontab_message(update)
 
 
-async def prepare_crontab_update(update, crontab, db_service):
+async def prepare_crontab_update(
+    update: Update, crontab: str, db_service: mongo.MongoService
+) -> Tuple[Optional[str], Optional[Dict[str, Any]], Optional[Exception]]:
     try:
         description = get_description(crontab).lower()
     except Exception:  # crontab is not valid
@@ -317,7 +334,9 @@ async def prepare_crontab_update(update, crontab, db_service):
     return description, payload, None
 
 
-async def update_crontab(update, context: ContextTypes.DEFAULT_TYPE):
+async def update_crontab(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -354,7 +373,9 @@ async def update_crontab(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_confirm_message(update, entry, description)
 
 
-async def update_timezone(update, context: ContextTypes.DEFAULT_TYPE):
+async def update_timezone(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[Exception]:
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -402,7 +423,9 @@ async def update_timezone(update, context: ContextTypes.DEFAULT_TYPE):
     await replies.send_timezone_change_success_message(update, utc_tz)
 
 
-def generate_jobname(db_service, job_prefix, chat_id):
+def generate_jobname(
+    db_service: mongo.MongoService, job_prefix: str, chat_id: int
+) -> str:
     number = 1
     jobname = "%s (%d)" % (job_prefix, number)
     while dbutils.entry_exists(db_service, chat_id, jobname):

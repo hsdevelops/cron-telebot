@@ -1,18 +1,20 @@
 from teleapi.endpoints import get_bot_details
 from telegram.ext import ConversationHandler
 from telegram.ext._contexttypes import ContextTypes
+from telegram import Update
 from bot.replies import replies
 from database import mongo
 from database.dbutils import dbutils
 from common import log, utils
 import teleapi.endpoints as teleapi
+from typing import Any, Optional
 
 
 state0, state1 = range(2)
 
 
 # state 0
-async def choose_chat(update, context: ContextTypes.DEFAULT_TYPE):
+async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db_service = mongo.MongoService(update)
     chat_title = str(update.message.text)
     user_id = update.message.from_user.id
@@ -39,7 +41,7 @@ async def choose_chat(update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # state 1
-async def update_sender(update, context: ContextTypes.DEFAULT_TYPE):
+async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     new_token = str(update.message.text)
     user_id = update.message.from_user.id
 
@@ -70,7 +72,13 @@ async def update_sender(update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def reset_sender(db_service, chat_id, user_id, new_token, prev_token=None):
+def reset_sender(
+    db_service: mongo.MongoService,
+    chat_id: int,
+    user_id: int,
+    new_token: Optional[str],
+    prev_token: Optional[Any] = None,
+) -> bool:
     # special case — single photos can only be sent from the same bot
     single_photo_entries = dbutils.find_entries_by_content_type(db_service, chat_id)
     for entry in single_photo_entries:
