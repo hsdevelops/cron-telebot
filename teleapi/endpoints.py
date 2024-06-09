@@ -6,7 +6,6 @@ from urllib.parse import urlencode
 from config import TELEGRAM_BOT_TOKEN
 from database.dbutils import dbutils
 from typing import Optional, Any, Dict, Tuple
-from database.typing import CollectionType
 from database import mongo
 
 
@@ -170,7 +169,7 @@ def transfer_photo_between_bots(
     new_token: Optional[str],
     prev_token: Optional[str],
     chat_id: int,
-    entry: CollectionType,
+    entry: Optional[Any],
 ) -> Tuple[requests.Response, Optional[str]]:
     resp = send_single_photo_local(
         new_token=new_token,

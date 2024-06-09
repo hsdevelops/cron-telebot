@@ -1,3 +1,4 @@
+from unittest import mock
 import pytest
 from database.dbutils import dbutils_job
 
@@ -32,6 +33,7 @@ def mock_jobs():
             "created_ts": 1,
             "removed_ts": "",
             "nextrun_ts": "2012-02-11 08:22:00",
+            "pending_ts": "2012-12-10 23:59:00",
         },
         {
             "_id": 4,
@@ -62,6 +64,17 @@ def mock_jobs():
             "removed_ts": "2012-02-11 08:22:00",
             "nextrun_ts": "2012-02-11 08:22:00",
             "errors": [{"error": "Error 400", "timestamp": ""}],
+        },
+        {
+            "_id": 7,
+            "chat_id": 3,
+            "jobname": "test_job_6",
+            "created_by": 3,
+            "created_ts": 1,
+            "removed_ts": "",
+            "nextrun_ts": "2012-02-11 08:22:00",
+            "errors": [],
+            "pending_ts": "2012-12-11 00:00:10",
         },
     ]
 
@@ -110,9 +123,12 @@ def test_find_entries_removed_between(mongo_service, mock_jobs):
     assert len(res) == 0
 
 
+@mock.patch("common.utils.now", mock.MagicMock(return_value="2012-12-11 00:00:00"))
 def test_find_entries_by_nextrun(mongo_service, mock_jobs):
     mongo_service.main_collection.insert_many(mock_jobs)
     res = dbutils_job.find_entries_by_nextrun(mongo_service, "2013-12-11 00:00:00")
+    ids = [entry["_id"] for entry in res]
+    assert set(ids) == set([1, 2, 3])
     assert len(res) == 3
 
 

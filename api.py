@@ -6,14 +6,13 @@ import uvicorn
 from common import log, utils
 from common.enums import ContentType
 from database import mongo
-from database.typing import CollectionType
 from database.dbutils import dbutils
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from threading import Thread
 from fastapi import FastAPI, Response
 from prometheus_fastapi_instrumentator import Instrumentator
-from typing import Optional
+from typing import Any, Optional
 
 import config
 from bot.ptb import lifespan
@@ -89,7 +88,7 @@ def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) 
 
 
 def process_job(
-    db_service: mongo.MongoService, entry: CollectionType, parsed_time: str
+    db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str
 ) -> None:
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
@@ -108,6 +107,9 @@ def process_job(
     user_bot_token = entry.get("user_bot_token")
     if user_bot_token is None:
         user_bot_token = config.TELEGRAM_BOT_TOKEN
+
+    payload = {"pending_ts": utils.now()}
+    dbutils.update_entry_by_jobname(db_service, entry, payload)
 
     bot_message_id, status, err = send_message(
         job_id,
@@ -130,6 +132,7 @@ def process_job(
     errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
 
     payload = {
+        "pending_ts": None,
         "nextrun_ts": db_nextrun_ts,
         "user_nextrun_ts": user_nextrun_ts,
         "previous_message_id": str(bot_message_id),

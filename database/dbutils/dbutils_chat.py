@@ -1,7 +1,6 @@
 from common import log, utils
 from database.mongo import MongoService
-from typing import Optional
-from database.typing import CollectionType
+from typing import Any, Optional
 from datetime import datetime
 from telegram import Update
 
@@ -10,14 +9,14 @@ Getters
 """
 
 
-def find_chat_by_chatid(db_service: MongoService, chat_id: int) -> CollectionType:
+def find_chat_by_chatid(db_service: MongoService, chat_id: int) -> Optional[Any]:
     q = {"chat_id": float(chat_id)}
     return db_service.find_one_chat_entry(q)
 
 
 def find_chat_by_title(
     db_service: MongoService, user_id: int, chat_title: str
-) -> CollectionType:
+) -> Optional[Any]:
     q = {"created_by": user_id, "chat_title": chat_title}
     return db_service.find_one_chat_entry(q)
 
@@ -26,7 +25,7 @@ def chat_exists(db_service: MongoService, chat_id: int) -> bool:
     return find_chat_by_chatid(db_service, chat_id) is not None
 
 
-def find_groups_created_by(db_service: MongoService, user_id: int) -> CollectionType:
+def find_groups_created_by(db_service: MongoService, user_id: int) -> Optional[Any]:
     q = {
         "created_by": user_id,
         "chat_type": {"$nin": ["private", "channel"]},

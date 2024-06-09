@@ -55,5 +55,6 @@ def parse_time_millis(datetime_obj: datetime) -> str:
     return datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
 
 
-def now() -> str:
-    return parse_time_millis(datetime.now(timezone(timedelta(hours=config.TZ_OFFSET))))
+def now(offset: int = 0) -> str:
+    now_ts = datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
+    return parse_time_millis(now_ts + timedelta(minutes=offset))

@@ -25,8 +25,6 @@ async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def remove_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    now = datetime.now(timezone(timedelta(hours=TZ_OFFSET)))
-
     db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -40,7 +38,7 @@ async def remove_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     last_updated_by = update.message.from_user.id
     payload = {
-        "removed_ts": utils.parse_time_millis(now),
+        "removed_ts": utils.now(),
         "last_updated_by": last_updated_by,
     }
     dbutils.update_entry_by_jobname(db_service, entry, payload)

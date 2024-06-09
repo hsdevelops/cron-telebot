@@ -1,5 +1,6 @@
 python-telegram-bot
 fastapi
+gunicorn
 uvicorn[standard]
 python-dotenv
 prometheus-client

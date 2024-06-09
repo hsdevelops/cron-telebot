@@ -2,8 +2,7 @@ from telegram import Update
 
 from email import utils
 from common import log, utils
-from database.typing import CollectionType
-from typing import Any
+from typing import Any, Optional
 
 
 MongoService = (
@@ -16,7 +15,7 @@ Getters
 """
 
 
-def retrieve_user_data(db_service: MongoService, user_id: int) -> CollectionType:
+def retrieve_user_data(db_service: MongoService, user_id: int) -> Optional[Any]:
     q = {"user_id": float(user_id), "superseded_at": ""}
     return db_service.find_one_user(q)
 
@@ -41,7 +40,7 @@ def add_user(
 
 
 def supersede_user(
-    db_service: MongoService, entry: CollectionType, field_changed: Any
+    db_service: MongoService, entry: Optional[Any], field_changed: Any
 ) -> None:
     # update previous entry
     q = {"_id": entry["_id"]}
@@ -50,7 +49,7 @@ def supersede_user(
     log.log_user_updated(entry)
 
 
-def refresh_user(db_service: MongoService, entry: CollectionType) -> None:
+def refresh_user(db_service: MongoService, entry: Optional[Any]) -> None:
     q = {"_id": entry["_id"]}
     payload = {"last_used_at": utils.now()}
     db_service.update_one_user(q, payload)

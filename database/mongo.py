@@ -4,7 +4,6 @@ from pymongo import MongoClient
 from database.dbutils.dbutils_user import sync_user_data
 from typing import Any, List, Optional
 from telegram import Update
-from database.typing import QueryType, CollectionType
 
 
 class MongoService:
@@ -27,73 +26,75 @@ class MongoService:
         if update is not None:
             sync_user_data(self, update)
 
-    def insert_new_entry(self, q: QueryType) -> None:
+    def insert_new_entry(self, q: Optional[Any]) -> None:
         now = utils.now()
         q["created_ts"] = now
         q["last_update_ts"] = now
         self.main_collection.insert_one(q)
 
     def find_entries(
-        self, q: QueryType, sort: Optional[Any] = None
-    ) -> List[CollectionType]:
+        self, q: Optional[Any], sort: Optional[Any] = None
+    ) -> List[Optional[Any]]:
         res = self.main_collection.find(q)
         if sort is not None:
             res = res.sort(sort)
         return list(res)
 
-    def find_one_entry(self, q: QueryType) -> CollectionType:
+    def find_one_entry(self, q: Optional[Any]) -> Optional[Any]:
         return self.main_collection.find_one(q)
 
     def update_multiple_entries(
-        self, q: QueryType, update: QueryType
-    ) -> CollectionType:
+        self, q: Optional[Any], update: Optional[Any]
+    ) -> Optional[Any]:
         q["removed_ts"] = ""
         update["last_update_ts"] = utils.now()
         return self.main_collection.update_many(q, {"$set": update})
 
-    def update_entry(self, q: QueryType, update: QueryType) -> Any:
+    def update_entry(self, q: Optional[Any], update: Optional[Any]) -> Any:
         update["last_update_ts"] = utils.now()
         return self.main_collection.update_one(q, {"$set": update})
 
-    def count_entries(self, q: QueryType) -> int:
+    def count_entries(self, q: Optional[Any]) -> int:
         return self.main_collection.count_documents(q)
 
-    def insert_new_chat(self, q: QueryType) -> None:
+    def insert_new_chat(self, q: Optional[Any]) -> None:
         q["updated_ts"] = utils.now()
         self.chat_data_collection.insert_one(q)
 
-    def find_one_chat_entry(self, q: QueryType) -> CollectionType:
+    def find_one_chat_entry(self, q: Optional[Any]) -> Optional[Any]:
         return self.chat_data_collection.find_one(q)
 
-    def find_chat_entries(self, q: QueryType) -> CollectionType:
+    def find_chat_entries(self, q: Optional[Any]) -> Optional[Any]:
         return list(self.chat_data_collection.find(q))
 
-    def update_chat_entries(self, q: QueryType, update: QueryType) -> CollectionType:
+    def update_chat_entries(
+        self, q: Optional[Any], update: Optional[Any]
+    ) -> Optional[Any]:
         update["updated_ts"] = utils.now()
         return self.chat_data_collection.update_many(q, {"$set": update})
 
-    def update_one_chat_entry(self, q: QueryType, update: QueryType) -> None:
+    def update_one_chat_entry(self, q: Optional[Any], update: Optional[Any]) -> None:
         update["updated_ts"] = utils.now()
         self.chat_data_collection.update_one(q, {"$set": update})
 
-    def insert_new_user(self, q: QueryType) -> CollectionType:
+    def insert_new_user(self, q: Optional[Any]) -> Optional[Any]:
         now = utils.now()
         q["created_at"] = now
         q["last_used_at"] = now
         return self.user_data_collection.insert_one(q)
 
-    def find_one_user(self, q: QueryType) -> CollectionType:
+    def find_one_user(self, q: Optional[Any]) -> Optional[Any]:
         return self.user_data_collection.find_one(q)
 
-    def update_one_user(self, q: QueryType, update: QueryType) -> CollectionType:
+    def update_one_user(self, q: Optional[Any], update: Optional[Any]) -> Optional[Any]:
         return self.user_data_collection.update_one(q, {"$set": update})
 
-    def update_one_bot(self, q: QueryType, update: QueryType) -> CollectionType:
+    def update_one_bot(self, q: Optional[Any], update: Optional[Any]) -> Optional[Any]:
         update["updated_at"] = utils.now()
         return self.bot_data_collection.update_one(q, {"$set": update}, upsert=True)
 
-    def find_one_bot(self, q: QueryType) -> CollectionType:
+    def find_one_bot(self, q: Optional[Any]) -> Optional[Any]:
         return self.bot_data_collection.find_one(q)
 
-    def find_one_whitelist(self, q: QueryType) -> CollectionType:
+    def find_one_whitelist(self, q: Optional[Any]) -> Optional[Any]:
         return self.user_whitelist_collection.find_one(q)
