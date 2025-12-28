@@ -21,7 +21,7 @@ app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
-sem = asyncio.Semaphore(min(8, config.BATCH_SIZE))  # concurrency limiter
+sem = asyncio.Semaphore(config.BATCH_SIZE)  # concurrency limiter
 
 
 @app.get("/")
