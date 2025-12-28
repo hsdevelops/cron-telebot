@@ -9,28 +9,28 @@ Getters
 """
 
 
-def find_chat_by_chatid(db_service: MongoService, chat_id: int) -> Optional[Any]:
+async def find_chat_by_chatid(db_service: MongoService, chat_id: int) -> Optional[Any]:
     q = {"chat_id": float(chat_id)}
-    return db_service.find_one_chat_entry(q)
+    return await db_service.find_one_chat_entry(q)
 
 
-def find_chat_by_title(
+async def find_chat_by_title(
     db_service: MongoService, user_id: int, chat_title: str
 ) -> Optional[Any]:
     q = {"created_by": user_id, "chat_title": chat_title}
-    return db_service.find_one_chat_entry(q)
+    return await db_service.find_one_chat_entry(q)
 
 
-def chat_exists(db_service: MongoService, chat_id: int) -> bool:
-    return find_chat_by_chatid(db_service, chat_id) is not None
+async def chat_exists(db_service: MongoService, chat_id: int) -> bool:
+    return await find_chat_by_chatid(db_service, chat_id) is not None
 
 
-def find_groups_created_by(db_service: MongoService, user_id: int) -> Optional[Any]:
+async def find_groups_created_by(db_service: MongoService, user_id: int) -> Optional[Any]:
     q = {
         "created_by": user_id,
         "chat_type": {"$nin": ["private", "channel"]},
     }
-    return db_service.find_chat_entries(q)
+    return await db_service.find_chat_entries(q)
 
 
 """
@@ -38,7 +38,7 @@ Setters
 """
 
 
-def add_chat_data(
+async def add_chat_data(
     db_service: MongoService,
     chat_id: int,
     chat_title: str,
@@ -59,11 +59,11 @@ def add_chat_data(
         "restriction": "",
         "user_bot_token": None,
     }
-    db_service.insert_new_chat(new_doc)
+    await db_service.insert_new_chat(new_doc)
     log.log_new_chat(chat_id, chat_title)
 
 
-def update_chats_tz_by_type(
+async def update_chats_tz_by_type(
     db_service: MongoService,
     user_id: int,
     tz_offset: float,
@@ -72,17 +72,17 @@ def update_chats_tz_by_type(
 ) -> None:
     payload = {"tz_offset": tz_offset, "utc_tz": utc_tz, "updated_ts": utils.now()}
     q = {"created_by": user_id, "chat_type": chat_type}
-    mongo_response = db_service.update_chat_entries(q, payload)
+    mongo_response = await db_service.update_chat_entries(q, payload)
     modified_count = mongo_response.modified_count
     log.log_chats_tz_updated_by_type(modified_count, user_id, chat_type, tz_offset)
 
 
-def update_chat_entry(
+async def update_chat_entry(
     db_service: MongoService,
     chat_id: int,
     update: Update,
     updated_field: str = "restriction",
 ) -> None:
     q = {"chat_id": chat_id}
-    db_service.update_one_chat_entry(q, update)
+    await db_service.update_one_chat_entry(q, update)
     log.log_chat_entry_updated(chat_id, updated_field, update[updated_field])

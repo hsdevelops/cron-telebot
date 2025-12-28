@@ -10,12 +10,12 @@ from typing import Optional
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
-async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # timezone must be defined in order to create new job
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    if await dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return await replies.send_start_message(update)
 
     await replies.send_simple_prompt_message(update)
@@ -33,10 +33,10 @@ async def checkcron(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /add is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # timezone must be defined in order to create new job
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    if await dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return await replies.send_start_message(update)
 
     rights = await permissions.check_rights(update, context, db_service)
@@ -45,7 +45,7 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # person limit
     user_id = update.message.from_user.id
-    job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
+    job_count, user_limit = await dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
         return await replies.send_exceed_limit_error_message(update, user_limit)
 
@@ -54,10 +54,10 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def add_multiple(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /addmultiple is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # timezone must be defined in order to create new job
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    if await dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return await replies.send_start_message(update)
 
     rights = await permissions.check_rights(update, context, db_service)
@@ -66,7 +66,7 @@ async def add_multiple(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     # person limit
     user_id = update.message.from_user.id
-    job_count, user_limit = dbutils.get_user_limit(db_service, user_id)
+    job_count, user_limit = await dbutils.get_user_limit(db_service, user_id)
     if job_count >= user_limit:
         return await replies.send_exceed_limit_error_message(update, user_limit)
 
@@ -75,12 +75,13 @@ async def add_multiple(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /delete is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    entries = await dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 
@@ -89,12 +90,13 @@ async def delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def list_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /list is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    entries = await dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 
@@ -115,7 +117,8 @@ async def option_restrict_to_admins(
     if update.message.chat.type not in ["group", "supergroup"]:
         return
 
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
     if not await permissions.check_rights(update, context, db_service, True):
         return
 
@@ -130,7 +133,6 @@ async def option_restrict_to_user(
     if update.message.chat.type not in ["group", "supergroup"]:
         return
 
-    db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
@@ -140,10 +142,10 @@ async def option_restrict_to_user(
 
 async def change_tz(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /changetz is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # timezone must be defined in order to change tz
-    if dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
+    if await dbutils.find_chat_by_chatid(db_service, update.message.chat.id) is None:
         return await replies.send_start_message(update)
 
     rights = await permissions.check_rights(update, context, db_service)
@@ -153,9 +155,12 @@ async def change_tz(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     return await replies.send_change_timezone_message(update)
 
 
-async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+async def change_sender(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Optional[int]:
     """Send a message when the command /changesender is issued."""
-    db_service = mongo.MongoService(update)
+
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # find groups/private/channel created by user
     user_id = update.message.from_user.id
@@ -164,7 +169,7 @@ async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE) -> Optiona
     if chat_type != "private":
         return await replies.send_private_only_error_message(update)
 
-    chat_entries = dbutils.find_groups_created_by(db_service, user_id)
+    chat_entries = await dbutils.find_groups_created_by(db_service, user_id)
     if len(chat_entries) <= 0:
         return await replies.send_missing_chats_error_message(update)
 
@@ -174,12 +179,13 @@ async def change_sender(update: Update, _: ContextTypes.DEFAULT_TYPE) -> Optiona
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /reset is issued."""
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    entries = await dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:  # there must be at least one job available
         return await replies.send_simple_prompt_message(update)
 
@@ -188,15 +194,15 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def edit_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """Send a message when the command /edit is issued."""
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
-    db_service = mongo.MongoService(update)
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
     context.user_data["user_id"] = update.message.from_user.id
 
-    entries = dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
+    entries = await dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
         return await replies.send_simple_prompt_message(update)
 

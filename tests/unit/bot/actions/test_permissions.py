@@ -76,7 +76,7 @@ async def test_check_rights_missing_entry(
 async def test_check_rights_no_retrictions(
     simple_update, simple_context, mongo_service, mock_group
 ):
-    mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_chat(mock_group)
     res = await check_rights(simple_update, simple_context, mongo_service)
     assert res is True
 
@@ -88,7 +88,7 @@ async def test_check_rights_creator(
     send_401, simple_update, simple_context, mongo_service, mock_group
 ):
     mock_group["restriction"] = Restriction.OWNER.value
-    mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_chat(mock_group)
 
     res = await check_rights(simple_update, simple_context, mongo_service)
     assert res is True
@@ -113,7 +113,7 @@ async def test_check_rights_admin(
     send_401, restriction, exp, simple_update, simple_context, mongo_service, mock_group
 ):
     mock_group["restriction"] = Restriction.ADMIN.value
-    mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_chat(mock_group)
 
     m = Member(restriction)
     simple_context.bot.get_chat_member = mock.AsyncMock(return_value=m)

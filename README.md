@@ -5,7 +5,7 @@ Recurring Messages ([@cron_telebot](https://t.me/cron_telebot)) is a Telegram bo
 Refer to our [user guide](https://github.com/hsdevelops/cron-telebot/wiki/User-Guide) for usage instructions.
 
 ## Noteworthy files
-1. [main.py](./main.py) — telegram bot, to add/delete/view the recurring jobs
+1. [poll.py](./poll.py) — telegram bot, to add/delete/view the recurring jobs
 2. [api.py](./api.py) — fast api app, ping the endpoint to trigger check and send all required messages
 3. [config.py](./config.py) — all the configurations you need to change for the bot
 4. [mongo.py](./database/mongo.py) — handles interaction with the mongo database
@@ -27,7 +27,10 @@ Note: The latest version does not support Google Sheets as a database anymore. P
    pip install -r requirements.txt
    ```
 
-3. Start services. Run `python main.py` to start the telegram bot. On another terminal, run `python api.py` to initialize the FastAPI endpoints (base path is `/api`).
+3. Start services. You have three options:
+   1. Run Telegram bot only — `python poll.py` (polling).
+   2. Run FastAPI endpoints only — `python api.py` (base path is `/api`).
+   3. Run both Telegram bot and FastAPI endpoints at the same time - `python main.py`.
 
 ## Running in production
 1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.

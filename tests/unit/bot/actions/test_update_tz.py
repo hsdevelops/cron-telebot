@@ -50,7 +50,7 @@ async def test_update_tz_unauthorized(reply, simple_update, simple_context):
 @mock.patch(
     "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
 )
-async def test_update_tz_missing_tz(send_msg, simple_update, simple_context, mocker):
+async def test_update_tz_missing_tz(send_msg, simple_update, simple_context):
     await update_timezone(simple_update, simple_context)
     send_msg.assert_called_once()
 
@@ -91,7 +91,7 @@ async def test_update_tz_missing_chat(send_msg, simple_update, simple_context):
 async def test_update_tz_no_change(
     send_msg, simple_update, simple_context, mongo_service, mock_group
 ):
-    mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_chat(mock_group)
     await update_timezone(simple_update, simple_context)
     send_msg.assert_called_once()
 
@@ -111,18 +111,18 @@ async def test_update_tz_group(
     test_user_nextrun, test_nextrun = mock_resp
     mocker.patch("common.utils.calc_next_run", return_value=mock_resp)
 
-    mongo_service.insert_new_chat(mock_group)
-    mongo_service.insert_new_entry(mock_job)
+    await mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_entry(mock_job)
 
     await update_timezone(simple_update, simple_context)
     send_msg.assert_called_once()
 
-    res_group = mongo_service.find_one_chat_entry({"chat_id": 1})
+    res_group = await mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res_group is not None
     assert res_group["utc_tz"] == "+9:00"
     assert res_group["tz_offset"] == 9
 
-    res_jobs = mongo_service.find_entries({"created_by": 1})
+    res_jobs = await mongo_service.find_entries({"created_by": 1})
     assert len(res_jobs) == 1
     assert res_jobs[0]["nextrun_ts"] == test_nextrun
     assert res_jobs[0]["user_nextrun_ts"] == test_user_nextrun
@@ -150,25 +150,25 @@ async def test_update_tz_private(
     test_user_nextrun, test_nextrun = mock_resp
     mocker.patch("common.utils.calc_next_run", return_value=mock_resp)
 
-    mongo_service.insert_new_chat(mock_private)
-    mongo_service.insert_new_chat(mock_channel)
-    mongo_service.insert_new_entry(mock_job)
-    mongo_service.insert_new_entry(mock_job2)
+    await mongo_service.insert_new_chat(mock_private)
+    await mongo_service.insert_new_chat(mock_channel)
+    await mongo_service.insert_new_entry(mock_job)
+    await mongo_service.insert_new_entry(mock_job2)
 
     await update_timezone(simple_update, simple_context)
     send_msg.assert_called_once()
 
-    res_private = mongo_service.find_one_chat_entry({"chat_id": 1})
+    res_private = await mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res_private is not None
     assert res_private["utc_tz"] == "+9:00"
     assert res_private["tz_offset"] == 9
 
-    res_channel = mongo_service.find_one_chat_entry({"chat_id": 2})
+    res_channel = await mongo_service.find_one_chat_entry({"chat_id": 2})
     assert res_channel is not None
     assert res_channel["utc_tz"] == ""
     assert res_channel["tz_offset"] == 9
 
-    res_jobs = mongo_service.find_entries({"created_by": 1})
+    res_jobs = await mongo_service.find_entries({"created_by": 1})
     assert len(res_jobs) == 2
     assert res_jobs[0]["nextrun_ts"] == test_nextrun
     assert res_jobs[0]["user_nextrun_ts"] == test_user_nextrun

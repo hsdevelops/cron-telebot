@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import psutil
 from http import HTTPStatus
@@ -9,25 +10,22 @@ from database import mongo
 from database.dbutils import dbutils
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
-from threading import Thread
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from prometheus_fastapi_instrumentator import Instrumentator
 from typing import Any, Optional
 
 import config
 from bot.ptb import lifespan
 
-
-app = FastAPI(lifespan=lifespan) if config.ENV else FastAPI()
+app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
-
+sem = asyncio.Semaphore(min(8, config.BATCH_SIZE))  # concurrency limiter
 
 @app.get("/")
 def home() -> str:
     return "Hello world!"
-
 
 @app.get("/metricz")
 def prom_endpoint() -> Response:
@@ -45,12 +43,12 @@ def prom_endpoint() -> Response:
 
 @app.get("/api")
 @app.post("/api")
-def run() -> Response:
-    db_service = mongo.MongoService()
+async def run(request: Request) -> Response:
+    db_service = request.app.state.mongo
 
     now = datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
     parsed_time = utils.parse_time_mins(now)
-    entries = dbutils.find_entries_by_nextrun(db_service, parsed_time)
+    entries = await dbutils.find_entries_by_nextrun(db_service, parsed_time)
 
     entry_count = len(entries)
     log.log_entry_count(entry_count)
@@ -60,34 +58,29 @@ def run() -> Response:
         gc.collect()
         return Response(status_code=HTTPStatus.OK)
 
-    for i in range(0, len(entries), config.BATCH_SIZE):
-        batch = entries[i : i + config.BATCH_SIZE]
-        batch_jobs(db_service, batch, parsed_time)
+    # schedule all jobs with concurrency limit
+    tasks = [bounded_process_job(db_service, entry, parsed_time) for entry in entries]
+    # gather all tasks, exceptions are handled individually inside bounded_process_job
+    await asyncio.gather(*tasks)
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
-    if config.INFLUXDB_TOKEN:
-        dbutils.save_msg_count(entry_count)
+    if config.ENV and config.INFLUXDB_TOKEN:
+        await dbutils.save_msg_count(entry_count)
+
     log.log_completion(entry_count)
     return Response(status_code=HTTPStatus.OK)
 
 
-def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) -> None:
-    q = []
-    for entry in entries:
-        args = (
-            db_service,
-            entry,
-            parsed_time,
-        )
-        t = Thread(target=process_job, args=args, daemon=True)
-        t.start()
-        q.append(t)
-
-    for t in q:
-        t.join()
+async def bounded_process_job(db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str):
+    """Wrap async process_job with semaphore to limit concurrency"""
+    async with sem:
+        try:
+            await process_job(db_service, entry, parsed_time)
+        except Exception as e:
+            log.log_api_error(f"job {entry.get('_id')} failed: {e}")
 
 
-def process_job(
+async def process_job(
     db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str
 ) -> None:
     job_id = entry["_id"]
@@ -109,7 +102,7 @@ def process_job(
         user_bot_token = config.TELEGRAM_BOT_TOKEN
 
     payload = {"pending_ts": utils.now()}
-    dbutils.update_entry_by_jobname(db_service, entry, payload)
+    await dbutils.update_entry_by_jobname(db_service, entry, payload)
 
     bot_message_id, status, err = send_message(
         job_id,
@@ -126,7 +119,7 @@ def process_job(
         teleapi.delete_message(chat_id, previous_message_id, user_bot_token)
 
     # calculate and update next run time
-    chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id) or {}
+    chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id) or {}
     user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
     user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
     errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
@@ -139,7 +132,7 @@ def process_job(
         "removed_ts": parsed_time if len(errors) > config.RETRIES else "",
         "errors": errors,
     }
-    dbutils.update_entry_by_jobname(db_service, entry, payload)
+    await dbutils.update_entry_by_jobname(db_service, entry, payload)
 
 
 def send_message(
@@ -178,5 +171,6 @@ def send_message(
     return resp.json()["result"]["message_id"], resp.status_code, None
 
 
+# Run api only
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

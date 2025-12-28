@@ -10,15 +10,14 @@ from typing import Optional
 async def restrict_to_admins(update: Update, db_service: mongo.MongoService) -> None:
     chat_id = update.message.chat.id
 
-    db_service = mongo.MongoService(update)
-    entry = dbutils.find_chat_by_chatid(db_service, chat_id)
+    entry = await dbutils.find_chat_by_chatid(db_service, chat_id)
     if entry is None:
         return
 
     current_restriction = entry.get("restriction", "")
 
     if current_restriction == Restriction.ADMIN.value:
-        dbutils.update_chat_entry(db_service, chat_id, {"restriction": ""})
+        await dbutils.update_chat_entry(db_service, chat_id, {"restriction": ""})
         return await replies.send_restrict_success_message(update, "everyone")
 
     if current_restriction == Restriction.OWNER.value:
@@ -27,7 +26,7 @@ async def restrict_to_admins(update: Update, db_service: mongo.MongoService) -> 
         )
 
     payload = {"restriction": Restriction.ADMIN.value}
-    dbutils.update_chat_entry(db_service, chat_id, payload)
+    await dbutils.update_chat_entry(db_service, chat_id, payload)
     return await replies.send_restrict_success_message(update, "only group admins")
 
 
@@ -41,7 +40,7 @@ async def check_rights(
     user_id = message.from_user.id
     group_id = await get_chat_id(update, context)
 
-    entry = dbutils.find_chat_by_chatid(db_service, group_id)
+    entry = await dbutils.find_chat_by_chatid(db_service, group_id)
     if entry is None:
         await replies.send_start_message(update)
         return False
@@ -68,7 +67,7 @@ async def check_rights(
 async def restrict_to_user(update: Update, db_service: mongo.MongoService) -> None:
     # user running this command must be creator
     chat_id = update.message.chat.id
-    entry = dbutils.find_chat_by_chatid(db_service, chat_id)
+    entry = await dbutils.find_chat_by_chatid(db_service, chat_id)
     if entry is None:
         return
 
@@ -84,10 +83,10 @@ async def restrict_to_user(update: Update, db_service: mongo.MongoService) -> No
         return await replies.send_wrong_restriction_message(update, "group admins")
 
     if current_restriction == Restriction.OWNER.value:
-        dbutils.update_chat_entry(db_service, chat_id, {"restriction": ""})
+        await dbutils.update_chat_entry(db_service, chat_id, {"restriction": ""})
         return await replies.send_restrict_success_message(update, "everyone")
 
-    dbutils.update_chat_entry(
+    await dbutils.update_chat_entry(
         db_service, chat_id, {"restriction": Restriction.OWNER.value}
     )
     return await replies.send_restrict_success_message(update, "only you")
