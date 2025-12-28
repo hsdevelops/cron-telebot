@@ -66,8 +66,9 @@ async def run(request: Request) -> Response:
     await asyncio.gather(*tasks)
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
-    if config.ENV and config.INFLUXDB_TOKEN:
-        await dbutils.save_msg_count(entry_count)
+
+    if config.INFLUXDB_TOKEN:
+        dbutils.save_msg_count(entry_count)
 
     log.log_completion(entry_count)
     return Response(status_code=HTTPStatus.OK)

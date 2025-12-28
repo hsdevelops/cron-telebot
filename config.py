@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 """ General config """
-# Set ENV to any value to use webhook instead of polling for bot. Must be set in prod environment.
-ENV = getenv("ENV")
 TZ_OFFSET = 8.0  # (UTC+08:00)
 JOB_LIMIT_PER_PERSON = 10
 BATCH_SIZE = 100  # Max number of messages to send at any given time

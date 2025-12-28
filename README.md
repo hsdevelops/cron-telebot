@@ -30,11 +30,10 @@ Note: The latest version does not support Google Sheets as a database anymore. P
 3. Start services. You have three options:
    1. Run Telegram bot only — `python poll.py` (polling).
    2. Run FastAPI endpoints only — `python api.py` (base path is `/api`).
-   3. Run both Telegram bot and FastAPI endpoints at the same time - `python main.py`.
+   3. Run both Telegram bot and FastAPI endpoints at the same time — `python main.py`.
 
 ## Running in production
 1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.
-   * Remember to set the ENV environment variable to any value of your choice (e.g. `dev`, `uat`, `prod`)
 2. Entrypoint is `gunicorn main:app -k uvicorn.workers.UvicornWorker --timeout 60`. No need to run bot and api separately.
 
 ## Contributing
