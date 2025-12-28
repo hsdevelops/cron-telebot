@@ -3,8 +3,9 @@ from common import utils
 from typing import Any, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 
+
 class MongoService:
-    def __init__(self, conn_str = config.MONGODB_CONNECTION_STRING) -> None:
+    def __init__(self, conn_str=config.MONGODB_CONNECTION_STRING) -> None:
         # Provide the mongodb atlas url to connect python to mongodb using pymongo
 
         # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
@@ -14,10 +15,12 @@ class MongoService:
         self.chat_data_collection = self.db[config.MONGODB_CHAT_DATA_COLLECTION]
         self.user_data_collection = self.db[config.MONGODB_USER_DATA_COLLECTION]
         self.bot_data_collection = self.db[config.MONGODB_BOT_DATA_COLLECTION]
-        self.user_whitelist_collection = self.db[config.MONGODB_USER_WHITELIST_COLLECTION]
-    
+        self.user_whitelist_collection = self.db[
+            config.MONGODB_USER_WHITELIST_COLLECTION
+        ]
+
     def get_collection(self, collection_name: str) -> AsyncIOMotorCollection:
-        db = getattr(self, 'db')
+        db = getattr(self, "db")
         return getattr(db, collection_name)
 
     async def insert_new_entry(self, q: Optional[Any]) -> None:
@@ -68,7 +71,9 @@ class MongoService:
         update["updated_ts"] = utils.now()
         return await self.chat_data_collection.update_many(q, {"$set": update})
 
-    async def update_one_chat_entry(self, q: Optional[Any], update: Optional[Any]) -> None:
+    async def update_one_chat_entry(
+        self, q: Optional[Any], update: Optional[Any]
+    ) -> None:
         update["updated_ts"] = utils.now()
         await self.chat_data_collection.update_one(q, {"$set": update})
 
@@ -81,10 +86,14 @@ class MongoService:
     async def find_one_user(self, q: Optional[Any]) -> Optional[Any]:
         return await self.user_data_collection.find_one(q)
 
-    async def update_one_user(self, q: Optional[Any], update: Optional[Any]) -> Optional[Any]:
+    async def update_one_user(
+        self, q: Optional[Any], update: Optional[Any]
+    ) -> Optional[Any]:
         return await self.user_data_collection.update_one(q, {"$set": update})
 
-    async def update_one_bot(self, q: Optional[Any], update: Optional[Any]) -> Optional[Any]:
+    async def update_one_bot(
+        self, q: Optional[Any], update: Optional[Any]
+    ) -> Optional[Any]:
         update["updated_at"] = utils.now()
         return await self.bot_data_collection.update_one(
             q, {"$set": update}, upsert=True

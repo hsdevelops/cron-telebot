@@ -109,6 +109,7 @@ def log_photo_transferred(
 def log_bot_error(msg: str) -> None:
     logger.error(f"[BOT] {msg}")
 
+
 # database
 def log_new_entry(jobname: str, chat_id: int) -> None:
     msg = '[DB] Created new job, jobname="%s", chat_id=%s'
@@ -192,6 +193,7 @@ def log_completion(total_count: int) -> None:
 
 def log_api_error(msg: str) -> None:
     logger.error(f"[TELEGRAM API] {msg}")
+
 
 # prometheus
 def log_update_prometheus(metric: int, value: float) -> None:

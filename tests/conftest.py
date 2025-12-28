@@ -4,6 +4,7 @@ import pytest
 import config
 from database.mongo import MongoService
 
+
 @pytest.fixture
 def mongo_service():
     client = AsyncMongoMockClient()

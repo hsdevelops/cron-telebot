@@ -31,6 +31,7 @@ message_handler_map: Dict[str, MESSAGE_HANDLER] = {
     replies.change_timezone_message: actions.update_timezone,
 }
 
+
 async def handle_messages(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[Exception]:
@@ -38,7 +39,7 @@ async def handle_messages(
         return
 
     # job creation for channels
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     if update.message.forward_from_chat is not None:
         return await actions.add_new_channel_job(update, db_service)
@@ -68,7 +69,7 @@ async def handle_photos(
         return
 
     # job creation for channels
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     if update.message.forward_from_chat is not None:
         return await actions.add_new_channel_job(update, db_service)
@@ -96,10 +97,12 @@ async def handle_polls(
     ):
         return await replies.send_quiz_unavailable_message(update)
 
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     if is_channel_job:
-        return await actions.add_new_channel_job(update=update, db_service=db_service, poll=True)
+        return await actions.add_new_channel_job(
+            update=update, db_service=db_service, poll=True
+        )
 
     reply_to_message = update.message.reply_to_message
     if reply_to_message is None:
@@ -132,7 +135,6 @@ bot_handlers = [
     # conversations (must be declared first, not sure why)
     convo_handlers.edit_handler,
     convo_handlers.config_chat_handler,
-
     # on different commands - answer in Telegram
     CommandHandler("start", commands.start),
     CommandHandler("help", commands.help),
@@ -146,12 +148,10 @@ bot_handlers = [
     CommandHandler("changetz", commands.change_tz),
     CommandHandler("reset", commands.reset),
     CommandHandler("addmultiple", commands.add_multiple),
-
     # on noncommand i.e message
     MessageHandler(filters.TEXT, handle_messages),
     MessageHandler(filters.PHOTO, handle_photos),
     MessageHandler(filters.POLL, handle_polls),
-
     # on callback
-    CallbackQueryHandler(handle_callback)
+    CallbackQueryHandler(handle_callback),
 ]

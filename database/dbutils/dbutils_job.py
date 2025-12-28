@@ -40,7 +40,9 @@ async def find_entries_removed_between(
     return await db_service.find_entries(q)
 
 
-async def find_entries_by_nextrun(db_service: MongoService, ts: str) -> List[Optional[Any]]:
+async def find_entries_by_nextrun(
+    db_service: MongoService, ts: str
+) -> List[Optional[Any]]:
     base_q = {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
     # Only return messages that are not pending, or pending for more than 5 mins.
     base_q["$or"] = [{"pending_ts": None}, {"pending_ts": {"$lte": utils.now(-5)}}]

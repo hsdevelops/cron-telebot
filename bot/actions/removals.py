@@ -10,7 +10,7 @@ from database.dbutils import dbutils
 
 
 async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -24,14 +24,16 @@ async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def remove_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
         return
 
     chat_id = update.message.chat.id
-    entry = await dbutils.find_entry_by_jobname(db_service, chat_id, update.message.text)
+    entry = await dbutils.find_entry_by_jobname(
+        db_service, chat_id, update.message.text
+    )
 
     if entry is None:
         return await replies.send_error_message(update)

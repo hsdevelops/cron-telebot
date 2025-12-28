@@ -9,6 +9,7 @@ from database import mongo
 
 db_service = mongo.MongoService(config.MONGODB_CONNECTION_STRING)
 
+
 async def setup_bot(application: Application):
     application.bot_data["mongo"] = db_service
 
@@ -16,6 +17,7 @@ async def setup_bot(application: Application):
     application.add_error_handler(handle_error)
     for h in bot_handlers:
         application.add_handler(h)
+
 
 # https://github.com/python-telegram-bot/python-telegram-bot/wiki/Handling-network-errors
 ptb = (
@@ -27,6 +29,7 @@ ptb = (
 
 ptb_builder = ptb.post_init(setup_bot)
 ptb = ptb_builder.build()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:

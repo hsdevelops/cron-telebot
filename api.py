@@ -23,9 +23,11 @@ cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
 sem = asyncio.Semaphore(min(8, config.BATCH_SIZE))  # concurrency limiter
 
+
 @app.get("/")
 def home() -> str:
     return "Hello world!"
+
 
 @app.get("/metricz")
 def prom_endpoint() -> Response:
@@ -71,7 +73,9 @@ async def run(request: Request) -> Response:
     return Response(status_code=HTTPStatus.OK)
 
 
-async def bounded_process_job(db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str):
+async def bounded_process_job(
+    db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str
+):
     """Wrap async process_job with semaphore to limit concurrency"""
     async with sem:
         try:

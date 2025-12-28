@@ -15,8 +15,8 @@ state0, state1 = range(2)
 
 # state 0
 async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
-    
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
     chat_title = str(update.message.text)
     user_id = update.message.from_user.id
     chat_entry = await dbutils.find_chat_by_title(db_service, user_id, chat_title)
@@ -33,7 +33,9 @@ async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return state1
 
     # Revert back to default — both chat and jobs
-    has_err = await reset_sender(db_service, chat_entry["chat_id"], user_id, None, prev_token)
+    has_err = await reset_sender(
+        db_service, chat_entry["chat_id"], user_id, None, prev_token
+    )
     if has_err:
         await replies.send_missing_bot_in_group_message(update)
         return ConversationHandler.END
@@ -46,7 +48,7 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     new_token = str(update.message.text)
     user_id = update.message.from_user.id
 
-    db_service: mongo.MongoService = context.application.bot_data['mongo']
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # check if bot exists
     resp = get_bot_details(new_token)
@@ -54,7 +56,6 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await replies.send_error_message(update)
         return state1
 
-    
     bot_data = {
         **resp.json()["result"],
         "token": new_token,
@@ -83,7 +84,9 @@ async def reset_sender(
     prev_token: Optional[Any] = None,
 ) -> bool:
     # special case — single photos can only be sent from the same bot
-    single_photo_entries = await dbutils.find_entries_by_content_type(db_service, chat_id)
+    single_photo_entries = await dbutils.find_entries_by_content_type(
+        db_service, chat_id
+    )
     for entry in single_photo_entries:
         resp, new_photo_id = await teleapi.transfer_photo_between_bots(
             db_service, new_token, prev_token, chat_id, entry

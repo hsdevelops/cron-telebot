@@ -7,7 +7,9 @@ from bot.convos import config_chat
 
 @pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_choose_chat_message")
-async def test_change_sender(send_msg, mongo_service, simple_update, simple_context, mock_group):
+async def test_change_sender(
+    send_msg, mongo_service, simple_update, simple_context, mock_group
+):
     await mongo_service.insert_new_chat(mock_group)
     res = await change_sender(simple_update, simple_context)
     assert res == config_chat.state0

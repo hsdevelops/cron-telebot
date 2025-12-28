@@ -25,7 +25,9 @@ async def chat_exists(db_service: MongoService, chat_id: int) -> bool:
     return await find_chat_by_chatid(db_service, chat_id) is not None
 
 
-async def find_groups_created_by(db_service: MongoService, user_id: int) -> Optional[Any]:
+async def find_groups_created_by(
+    db_service: MongoService, user_id: int
+) -> Optional[Any]:
     q = {
         "created_by": user_id,
         "chat_type": {"$nin": ["private", "channel"]},

@@ -28,7 +28,9 @@ def send_media_group(
         "reply_to_message_id": message_thread_id,
     }
     query_string = urlencode(query)
-    endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMediaGroup?{query_string}"
+    endpoint = (
+        f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMediaGroup?{query_string}"
+    )
     return requests.post(endpoint, files=files)
 
 
@@ -141,7 +143,9 @@ def prepare_photos(photo_id: str, content: str) -> Tuple[str, Dict[str, Any]]:
 def download_photo(
     files: Dict[str, Any], photo_id: str, bot_token: Optional[str] = TELEGRAM_BOT_TOKEN
 ) -> Dict[str, Any]:
-    file_details_endpoint = f"{TELEGRAM_API_BASE_URL}/bot{bot_token}/getFile?file_id={photo_id}"
+    file_details_endpoint = (
+        f"{TELEGRAM_API_BASE_URL}/bot{bot_token}/getFile?file_id={photo_id}"
+    )
     file_details_response = requests.get(file_details_endpoint)
     file_path = file_details_response.json()["result"]["file_path"]
     file_url = f"{TELEGRAM_API_BASE_URL}/file/bot{bot_token}/{file_path}"
