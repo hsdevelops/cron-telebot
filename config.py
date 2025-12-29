@@ -12,8 +12,9 @@ BOT_NAME = "@cron_telebot"
 
 """ Telegram config """
 TELEGRAM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
-BOTHOST = getenv("RENDER_EXTERNAL_URL", default=getenv("BOTHOST")) # used to set telegram bot webhook
 TELEGRAM_API_BASE_URL = "https://api.telegram.org"
+BOTHOST = getenv("RENDER_EXTERNAL_URL")
+BOTHOST = BOTHOST or getenv("BOTHOST")  # used to set telegram bot webhook
 
 """ DB config """
 MONGODB_CONNECTION_STRING = getenv("MONGODB_CONNECTION_STRING")
