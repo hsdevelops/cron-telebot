@@ -15,9 +15,9 @@ Getters
 """
 
 
-def retrieve_user_data(db_service: MongoService, user_id: int) -> Optional[Any]:
+async def retrieve_user_data(db_service: MongoService, user_id: int) -> Optional[Any]:
     q = {"user_id": float(user_id), "superseded_at": ""}
-    return db_service.find_one_user(q)
+    return await db_service.find_one_user(q)
 
 
 """
@@ -25,7 +25,7 @@ Setters
 """
 
 
-def add_user(
+async def add_user(
     db_service: MongoService, user_id: int, username: str, first_name: str
 ) -> None:
     new_doc = {
@@ -35,27 +35,27 @@ def add_user(
         "superseded_at": "",
         "field_changed": "",
     }
-    db_service.insert_new_user(new_doc)
+    await db_service.insert_new_user(new_doc)
     log.log_new_user(user_id, username)
 
 
-def supersede_user(
+async def supersede_user(
     db_service: MongoService, entry: Optional[Any], field_changed: Any
 ) -> None:
     # update previous entry
     q = {"_id": entry["_id"]}
     payload = {"superseded_at": utils.now(), "field_changed": field_changed}
-    db_service.update_one_user(q, payload)
+    await db_service.update_one_user(q, payload)
     log.log_user_updated(entry)
 
 
-def refresh_user(db_service: MongoService, entry: Optional[Any]) -> None:
+async def refresh_user(db_service: MongoService, entry: Optional[Any]) -> None:
     q = {"_id": entry["_id"]}
     payload = {"last_used_at": utils.now()}
-    db_service.update_one_user(q, payload)
+    await db_service.update_one_user(q, payload)
 
 
-def sync_user_data(db_service: MongoService, update: Update) -> None:
+async def sync_user_data(db_service: MongoService, update: Update) -> None:
     if update.message is None:
         return
     user = retrieve_user_data(db_service, update.message.from_user.id)

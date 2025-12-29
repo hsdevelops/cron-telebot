@@ -17,7 +17,7 @@ async def test_change_tz_missing_chat(send_msg, simple_update, simple_context):
 async def test_change_tz_unauthorized(
     reply, mongo_service, simple_update, simple_context, mock_group
 ):
-    mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_chat(mock_group)
     await change_tz(simple_update, simple_context)
     assert not reply.called
 
@@ -28,6 +28,6 @@ async def test_change_tz_unauthorized(
 async def test_change_tz(
     send_msg, mongo_service, simple_update, simple_context, mock_group
 ):
-    mongo_service.insert_new_chat(mock_group)
+    await mongo_service.insert_new_chat(mock_group)
     await change_tz(simple_update, simple_context)
     send_msg.assert_called_once()
