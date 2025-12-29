@@ -29,8 +29,6 @@ attrs = [
 ]
 
 # state 0
-
-
 async def choose_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 

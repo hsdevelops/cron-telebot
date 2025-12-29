@@ -39,8 +39,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         yield
         return
 
+    await ptb.initialize()
+    await ptb.bot.deleteWebhook(drop_pending_updates=True)
     await ptb.bot.setWebhook(config.BOTHOST)
     await ptb.start()
     yield
     await ptb.stop()
+    await ptb.shutdown()
     # TODO : close db

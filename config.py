@@ -12,7 +12,7 @@ BOT_NAME = "@cron_telebot"
 
 """ Telegram config """
 TELEGRAM_BOT_TOKEN = getenv("TELEGRAM_BOT_TOKEN")
-BOTHOST = getenv("BOTHOST")  # only required in prod environment, used to set webhook
+BOTHOST = getenv("RENDER_EXTERNAL_URL", default=getenv("BOTHOST")) # used to set telegram bot webhook
 TELEGRAM_API_BASE_URL = "https://api.telegram.org"
 
 """ DB config """
