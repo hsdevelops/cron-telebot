@@ -21,7 +21,6 @@ app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
-sem = asyncio.Semaphore(config.BATCH_SIZE)  # concurrency limiter
 
 
 @app.get("/")
@@ -61,7 +60,10 @@ async def run(request: Request) -> Response:
         return Response(status_code=HTTPStatus.OK)
 
     # schedule all jobs with concurrency limit
-    tasks = [bounded_process_job(db_service, entry, parsed_time) for entry in entries]
+    sem = asyncio.Semaphore(config.BATCH_SIZE)  # concurrency limiter
+    tasks = [
+        bounded_process_job(db_service, entry, parsed_time, sem) for entry in entries
+    ]
     # gather all tasks, exceptions are handled individually inside bounded_process_job
     await asyncio.gather(*tasks)
 
@@ -75,14 +77,17 @@ async def run(request: Request) -> Response:
 
 
 async def bounded_process_job(
-    db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str
+    db_service: mongo.MongoService,
+    entry: Optional[Any],
+    parsed_time: str,
+    sem: asyncio.Semaphore,
 ):
-    """Wrap async process_job with semaphore to limit concurrency"""
-    async with sem:
-        try:
+    try:
+        # Acquire semaphore safely
+        async with sem:
             await process_job(db_service, entry, parsed_time)
-        except Exception as e:
-            log.log_api_error(f"job {entry.get('_id')} failed: {e}")
+    except Exception as e:
+        log.log_api_error(f"job {entry.get('_id')} failed: {e}")
 
 
 async def process_job(
