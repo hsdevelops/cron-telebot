@@ -1,5 +1,6 @@
 import asyncio
 import gc
+import time
 import psutil
 from http import HTTPStatus
 from prometheus_client import Gauge, generate_latest
@@ -60,19 +61,21 @@ async def run(request: Request) -> Response:
         return Response(status_code=HTTPStatus.OK)
 
     # schedule all jobs with concurrency limit
+    start_time = time.perf_counter()
     sem = asyncio.Semaphore(config.BATCH_SIZE)  # concurrency limiter
     tasks = [
         bounded_process_job(db_service, entry, parsed_time, sem) for entry in entries
     ]
     # gather all tasks, exceptions are handled individually inside bounded_process_job
     await asyncio.gather(*tasks)
+    end_time = time.perf_counter()
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
 
     if config.INFLUXDB_TOKEN:
         dbutils.save_msg_count(entry_count)
 
-    log.log_completion(entry_count)
+    log.log_completion(entry_count, f"{end_time - start_time:.2f}")
     return Response(status_code=HTTPStatus.OK)
 
 

@@ -187,8 +187,10 @@ def log_entry_count(count: int) -> None:
     logger.info("[TELEGRAM API] Processing %d message(s) to send this time...", count)
 
 
-def log_completion(total_count: int) -> None:
-    logger.info("[TELEGRAM API] Finished processing %d messages", total_count)
+def log_completion(total_count: int, duration: str) -> None:
+    logger.info(
+        f"[TELEGRAM API] Finished processing {total_count} messages in {duration} seconds"
+    )
 
 
 def log_api_error(msg: str) -> None:
