@@ -2,6 +2,7 @@ import config
 from common import utils
 from typing import Any, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from pymongo.results import UpdateResult
 
 
 class MongoService:
@@ -47,7 +48,9 @@ class MongoService:
         update["last_update_ts"] = utils.now()
         return await self.main_collection.update_many(q, {"$set": update})
 
-    async def update_entry(self, q: Optional[Any], update: Optional[Any]) -> Any:
+    async def update_entry(
+        self, q: Optional[Any], update: Optional[Any]
+    ) -> UpdateResult:
         update["last_update_ts"] = utils.now()
         return await self.main_collection.update_one(q, {"$set": update})
 

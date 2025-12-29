@@ -183,6 +183,11 @@ def log_api_send_message(job_id: int, chat_id: int, status_code: int) -> None:
     logger.info(msg, job_id, chat_id, status_code)
 
 
+def log_duplicate(job_id: int, chat_id: int) -> None:
+    msg = '[TELEGRAM API] Job likely being processed by another worker, job_id="%s", chat_id=%s'
+    logger.info(msg, job_id, chat_id)
+
+
 def log_entry_count(count: int) -> None:
     logger.info("[TELEGRAM API] Processing %d message(s) to send this time...", count)
 

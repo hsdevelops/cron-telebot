@@ -63,9 +63,7 @@ async def run(request: Request) -> Response:
     # schedule all jobs with concurrency limit
     start_time = time.perf_counter()
     sem = asyncio.Semaphore(config.BATCH_SIZE)  # concurrency limiter
-    tasks = [
-        bounded_process_job(db_service, entry, parsed_time, sem) for entry in entries
-    ]
+    tasks = [bounded_process_job(db_service, entry, sem) for entry in entries]
     # gather all tasks, exceptions are handled individually inside bounded_process_job
     await asyncio.gather(*tasks)
     end_time = time.perf_counter()
@@ -82,20 +80,19 @@ async def run(request: Request) -> Response:
 async def bounded_process_job(
     db_service: mongo.MongoService,
     entry: Optional[Any],
-    parsed_time: str,
     sem: asyncio.Semaphore,
 ):
     try:
         # Acquire semaphore safely
         async with sem:
-            await process_job(db_service, entry, parsed_time)
+            await process_job(db_service, entry)
     except Exception as e:
         log.log_api_error(f"job {entry.get('_id')} failed: {e}")
 
 
-async def process_job(
-    db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str
-) -> None:
+async def process_job(db_service: mongo.MongoService, entry: Optional[Any]) -> None:
+    now = utils.now()
+
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
     chat_id = entry.get("chat_id", "")
@@ -114,8 +111,13 @@ async def process_job(
     if user_bot_token is None:
         user_bot_token = config.TELEGRAM_BOT_TOKEN
 
-    payload = {"pending_ts": utils.now()}
-    await dbutils.update_entry_by_jobname(db_service, entry, payload)
+    payload = {"pending_ts": now}
+    res = await dbutils.update_entry_by_jobname(
+        db_service, entry, payload, q=dbutils.make_due_jobs_query(now)
+    )
+    if res.modified_count <= 0:
+        log.log_duplicate(job_id, chat_id)
+        return
 
     bot_message_id, status, err = send_message(
         job_id,
@@ -135,14 +137,14 @@ async def process_job(
     chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id) or {}
     user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
     user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
-    errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
+    errors = [] if err is None else [*errors, {"error": err, "timestamp": now}]
 
     payload = {
         "pending_ts": None,
         "nextrun_ts": db_nextrun_ts,
         "user_nextrun_ts": user_nextrun_ts,
         "previous_message_id": str(bot_message_id),
-        "removed_ts": parsed_time if len(errors) > config.RETRIES else "",
+        "removed_ts": now if len(errors) > config.RETRIES else "",
         "errors": errors,
     }
     await dbutils.update_entry_by_jobname(db_service, entry, payload)

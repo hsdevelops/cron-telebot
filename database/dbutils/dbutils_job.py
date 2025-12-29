@@ -4,6 +4,23 @@ from common.enums import ContentType
 from database.mongo import MongoService
 from common import log, utils
 from typing import List, Optional, Dict, Any
+from pymongo.results import UpdateResult
+
+"""
+Queries
+"""
+
+
+def make_due_jobs_query(ts: str):
+    base_q = {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
+    # Only return messages that are not pending, or pending for more than 5 mins.
+    base_q["$or"] = [{"pending_ts": None}, {"pending_ts": {"$lte": utils.now(-5)}}]
+    return {
+        "$or": [
+            {"paused_ts": "", **base_q},
+            {"paused_ts": {"$exists": False}, **base_q},
+        ]
+    }
 
 
 """
@@ -43,15 +60,7 @@ async def find_entries_removed_between(
 async def find_entries_by_nextrun(
     db_service: MongoService, ts: str
 ) -> List[Optional[Any]]:
-    base_q = {"nextrun_ts": {"$lte": ts}, "removed_ts": "", "crontab": {"$ne": ""}}
-    # Only return messages that are not pending, or pending for more than 5 mins.
-    base_q["$or"] = [{"pending_ts": None}, {"pending_ts": {"$lte": utils.now(-5)}}]
-    q = {
-        "$or": [
-            {"paused_ts": "", **base_q},
-            {"paused_ts": {"$exists": False}, **base_q},
-        ]
-    }
+    q = make_due_jobs_query(ts)
     return await db_service.find_entries(q, [("created_at", ASCENDING)])
 
 
@@ -100,7 +109,6 @@ async def add_new_entry(
     photo_group_id: str = "",
     nextrun_ts: str = "",
     user_nextrun_ts: str = "",
-    pending_ts: Optional[str] = None,
     user_bot_token: Optional[str] = None,
     message_thread_id: Optional[int] = None,
     errors: List[Exception] = [],
@@ -121,7 +129,7 @@ async def add_new_entry(
             "option_delete_previous": "",
             "nextrun_ts": nextrun_ts,
             "user_nextrun_ts": user_nextrun_ts,
-            "pending_ts": pending_ts,
+            "pending_ts": None,
             "removed_ts": "",
             "remarks": "",
             "user_bot_token": user_bot_token,
@@ -134,9 +142,10 @@ async def add_new_entry(
 
 
 async def update_entry_by_jobname(
-    db_service: MongoService, entry: Optional[Any], update: Optional[Any]
-):
+    db_service: MongoService, entry: Optional[Any], update: Optional[Any], q: dict = {}
+) -> UpdateResult:
     q = {
+        **q,
         "created_ts": entry["created_ts"],
         "chat_id": entry["chat_id"],
         "jobname": entry["jobname"],
