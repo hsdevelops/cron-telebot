@@ -207,7 +207,7 @@ async def handle_clear_photos(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[int]:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
-    res = await update.message.text.lower()
+    res = update.message.text.lower()
 
     if res == "no":
         return end_convo(update, context)

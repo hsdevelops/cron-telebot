@@ -11,6 +11,7 @@ db_service = mongo.MongoService(config.MONGODB_CONNECTION_STRING)
 
 
 async def setup_bot(application: Application):
+    await ptb.bot.deleteWebhook(drop_pending_updates=True)
     application.bot_data["mongo"] = db_service
 
     # add handlers
@@ -39,9 +40,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         return
 
     await ptb.initialize()
-    await ptb.bot.deleteWebhook(drop_pending_updates=True)
-    await ptb.bot.setWebhook(config.BOTHOST)
     await setup_bot(ptb)
+    await ptb.bot.setWebhook(config.BOTHOST)
     yield
     await ptb.shutdown()
     # TODO : close db
