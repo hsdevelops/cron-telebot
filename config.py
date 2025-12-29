@@ -6,7 +6,7 @@ load_dotenv()
 """ General config """
 TZ_OFFSET = 8.0  # (UTC+08:00)
 JOB_LIMIT_PER_PERSON = 10
-BATCH_SIZE = 8  # Max number of messages to send at any given time
+BATCH_SIZE = 80  # Max number of messages to send at any given time
 RETRIES = 1  # Number of retries if message fails to send
 BOT_NAME = "@cron_telebot"
 
