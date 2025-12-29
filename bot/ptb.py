@@ -11,7 +11,7 @@ db_service = mongo.MongoService(config.MONGODB_CONNECTION_STRING)
 
 
 async def setup_bot(application: Application):
-    await ptb.bot.deleteWebhook(drop_pending_updates=True)
+    await ptb.bot.deleteWebhook(drop_pending_updates=False)
     application.bot_data["mongo"] = db_service
 
     # add handlers
