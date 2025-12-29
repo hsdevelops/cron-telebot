@@ -129,6 +129,7 @@ async def option_restrict_to_user(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Send a message when the command /creatoronly is issued."""
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     if update.message.chat.type not in ["group", "supergroup"]:
         return

@@ -3,14 +3,14 @@ from typing import Dict
 
 from bot.actions import actions
 from bot.replies import replies
-from bot.types import MESSAGE_HANDLER
 from common import log
 from database import mongo
 from teleapi import endpoints as teleapi
 from telegram import Update
-from typing import Optional
+from typing import Optional, Callable, Coroutine, Any, Optional
 from bot.convos import handlers as convo_handlers
 from bot import commands
+
 from telegram.ext import (
     CommandHandler,
     MessageHandler,
@@ -18,7 +18,9 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-message_handler_map: Dict[str, MESSAGE_HANDLER] = {
+message_handler_map: Dict[
+    str, Callable[[Any, Any], Coroutine[Any, Any, Optional[Exception]]]
+] = {
     replies.request_jobname_message: actions.add_new_job,
     replies.request_text_message: actions.add_message,
     replies.delete_message: actions.remove_job,

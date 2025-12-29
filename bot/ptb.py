@@ -25,10 +25,9 @@ ptb = (
     .token(config.TELEGRAM_BOT_TOKEN)
     .read_timeout(7)
     .get_updates_read_timeout(42)
+    .post_init(setup_bot)  # for polling
+    .build()
 )
-
-ptb_builder = ptb.post_init(setup_bot)
-ptb = ptb_builder.build()
 
 
 @asynccontextmanager
@@ -42,8 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     await ptb.initialize()
     await ptb.bot.deleteWebhook(drop_pending_updates=True)
     await ptb.bot.setWebhook(config.BOTHOST)
-    await ptb.start()
+    await setup_bot(ptb)
     yield
-    await ptb.stop()
     await ptb.shutdown()
     # TODO : close db
