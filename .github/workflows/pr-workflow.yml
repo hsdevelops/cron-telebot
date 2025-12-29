@@ -36,9 +36,6 @@ jobs:
             echo "status=$DEPLOY_STATUS" >> "$GITHUB_OUTPUT"
           timeout_minutes: 10
           max_attempts: 60
-      - name: Delete uat branch
-        run: |
-          git push origin --delete uat
       - name: Check deploy status
         if: steps.deploy.outputs.status != 'live'
         run: |
