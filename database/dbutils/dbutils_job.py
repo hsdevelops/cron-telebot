@@ -142,7 +142,7 @@ async def add_new_entry(
 
 
 async def update_entry_by_jobname(
-    db_service: MongoService, entry: Optional[Any], update: Optional[Any], q: dict = {}
+    db_service: MongoService, entry: Optional[Any], update: Optional[Any], q: Dict = {}
 ) -> UpdateResult:
     q = {
         **q,

@@ -1,4 +1,4 @@
-from teleapi.endpoints import get_bot_details
+import aiohttp
 from telegram.ext import ConversationHandler
 from telegram.ext._contexttypes import ContextTypes
 from telegram import Update
@@ -16,6 +16,7 @@ state0, state1 = range(2)
 # state 0
 async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
+    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     chat_title = str(update.message.text)
     user_id = update.message.from_user.id
@@ -34,7 +35,7 @@ async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     # Revert back to default — both chat and jobs
     has_err = await reset_sender(
-        db_service, chat_entry["chat_id"], user_id, None, prev_token
+        db_service, http_session, chat_entry["chat_id"], user_id, None, prev_token
     )
     if has_err:
         await replies.send_missing_bot_in_group_message(update)
@@ -49,15 +50,16 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     user_id = update.message.from_user.id
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
+    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     # check if bot exists
-    resp = get_bot_details(new_token)
-    if resp.status_code != 200:
+    resp = await teleapi.get_bot_details(http_session, new_token)
+    if resp.get("status") != 200:
         await replies.send_error_message(update)
         return state1
 
     bot_data = {
-        **resp.json()["result"],
+        **resp.get("json")["result"],
         "token": new_token,
         "created_by": user_id,
         "updated_at": utils.now(),
@@ -65,7 +67,9 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await dbutils.upsert_new_bot(db_service, user_id, bot_data)
 
     chat_id, chat_title = context.user_data["chat_id"], context.user_data["chat_title"]
-    has_err = await reset_sender(db_service, chat_id, user_id, new_token, None)
+    has_err = await reset_sender(
+        db_service, http_session, chat_id, user_id, new_token, None
+    )
     if has_err:
         await replies.send_missing_bot_in_group_message(update)
         return ConversationHandler.END
@@ -78,6 +82,7 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def reset_sender(
     db_service: mongo.MongoService,
+    http_session: aiohttp.ClientSession,
     chat_id: int,
     user_id: int,
     new_token: Optional[str],
@@ -89,11 +94,11 @@ async def reset_sender(
     )
     for entry in single_photo_entries:
         resp, new_photo_id = await teleapi.transfer_photo_between_bots(
-            db_service, new_token, prev_token, chat_id, entry
+            http_session, db_service, new_token, prev_token, chat_id, entry
         )
-        if resp.status_code != 200:
+        if resp.get("status") != 200:
             return True
-        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.status_code)
+        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.get("status"))
 
     # jobs
     q = {"$or": [{"chat_id": chat_id}, {"channel_id": chat_id}]}

@@ -107,18 +107,14 @@ State 1
 """
 
 
-class MockResponse:
-    def __init__(self, json_data, status_code):
-        self.json_data = json_data
-        self.status_code = status_code
-
-    def json(self):
-        return self.json_data
-
-
 @pytest.mark.asyncio
 @mock.patch("bot.replies.replies.send_error_message")
-async def test_update_sender_invalid_bot(send_msg, simple_context):
+async def test_update_sender_invalid_bot(send_msg, mocker, simple_context):
+    mock_resp = {"status": 500}
+    mocker.patch(
+        "bot.convos.config_chat.teleapi.get_bot_details", return_value=mock_resp
+    )
+
     simple_update = mock_update(text="some_token")
     res = await update_sender(simple_update, simple_context)
     assert res == state1
@@ -137,8 +133,10 @@ async def test_update_sender_valid_bot(
     mock_job,
     mock_job2,
 ):
-    mock_resp = MockResponse({"result": {"id": 1, "username": "test_bot"}}, 200)
-    mocker.patch("bot.convos.config_chat.get_bot_details", return_value=mock_resp)
+    mock_resp = {"json": {"result": {"id": 1, "username": "test_bot"}}, "status": 200}
+    mocker.patch(
+        "bot.convos.config_chat.teleapi.get_bot_details", return_value=mock_resp
+    )
 
     mock_group["user_bot_token"] = 1
     await mongo_service.insert_new_chat(mock_group)

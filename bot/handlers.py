@@ -1,3 +1,4 @@
+import aiohttp
 from telegram.ext._contexttypes import ContextTypes
 from typing import Dict
 
@@ -42,6 +43,7 @@ async def handle_messages(
 
     # job creation for channels
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
+    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     if update.message.forward_from_chat is not None:
         return await actions.add_new_channel_job(update, db_service)
@@ -58,7 +60,8 @@ async def handle_messages(
 
     err = await handler(update, context)
     if err is None:
-        teleapi.delete_message(
+        await teleapi.delete_message(
+            http_session,
             update.message.chat.id,
             reply_to_message.message_id,
         )
@@ -72,6 +75,7 @@ async def handle_photos(
 
     # job creation for channels
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
+    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     if update.message.forward_from_chat is not None:
         return await actions.add_new_channel_job(update, db_service)
@@ -83,7 +87,9 @@ async def handle_photos(
     if reply_to_message.text_html == replies.request_text_message:
         err = await actions.add_message(update, context, True)
         if err is None:
-            teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
+            await teleapi.delete_message(
+                http_session, update.message.chat.id, reply_to_message.message_id
+            )
 
 
 async def handle_polls(
@@ -100,6 +106,7 @@ async def handle_polls(
         return await replies.send_quiz_unavailable_message(update)
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
+    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     if is_channel_job:
         return await actions.add_new_channel_job(
@@ -115,7 +122,9 @@ async def handle_polls(
             update=update, context=context, photo=False, poll=True
         )
         if err is None:
-            teleapi.delete_message(update.message.chat.id, reply_to_message.message_id)
+            await teleapi.delete_message(
+                http_session, update.message.chat.id, reply_to_message.message_id
+            )
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

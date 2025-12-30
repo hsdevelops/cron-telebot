@@ -27,10 +27,7 @@ Note: The latest version does not support Google Sheets as a database anymore. P
    pip install -r requirements.txt
    ```
 
-3. Start services. You have three options:
-   1. Run Telegram bot only — `python poll.py` (polling).
-   2. Run FastAPI endpoints only — `python api.py` (base path is `/api`).
-   3. Run both Telegram bot and FastAPI endpoints at the same time — `python main.py`.
+3. Start services by running `python main.py`. You may toggle webhook/polling by setting/unsetting BOTHOST in [config.py](./config.py).
 
 ## Running in production
 1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.

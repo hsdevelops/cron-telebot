@@ -73,7 +73,7 @@ def simple_context(mongo_service):
     context = mock.Mock()
 
     context.application = mock.Mock()
-    context.application.bot_data = {"mongo": mongo_service}
+    context.application.bot_data = {"mongo": mongo_service, "http_session": mock.Mock()}
 
     context.bot_data = {}
     context.user_data = {}

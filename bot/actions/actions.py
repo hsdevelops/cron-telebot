@@ -1,3 +1,4 @@
+import aiohttp
 from bot.replies import replies
 from common import log, utils
 from common.enums import ContentType
@@ -340,6 +341,7 @@ async def update_crontab(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[Exception]:
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
+    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
@@ -369,9 +371,9 @@ async def update_crontab(
     bot_token = entry.get("user_bot_token")
     if is_single_photo and bot_token is not None:
         resp, new_photo_id = await teleapi.transfer_photo_between_bots(
-            db_service, bot_token, None, chat_id, entry
+            http_session, db_service, bot_token, None, chat_id, entry
         )
-        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.status_code)
+        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.get("status"))
 
     await replies.send_confirm_message(update, entry, description)
 
