@@ -8,11 +8,9 @@ on:
   #   branches:
   #     - main
   push:
-    branches:
-      - 'deploy-uat'
-      # - '**'      # matches every branch
-      # - '!uat'    # excludes uat
-      # - '!main'   # excludes main
+    branches-ignore:
+      - uat
+      - main
 jobs:
   deploy:
     permissions: write-all
@@ -28,13 +26,18 @@ jobs:
           DEPLOY_ID=$(curl -s --request POST "https://api.render.com/deploy/srv-cd40if9a6gdlt3h5m3sg?key=${{ secrets.RENDER_DEPLOY_KEY }}" | jq -r '.deploy.id')
           echo "DEPLOY_ID=$DEPLOY_ID" >> $GITHUB_ENV
       - name: Wait for bot deployment
+        id: deploy
         uses: nick-fields/retry@v2
         with:
           command: |
             DEPLOY_STATUS=$(curl -s --request GET --url "https://api.render.com/v1/services/srv-cd40if9a6gdlt3h5m3sg/deploys/$DEPLOY_ID" --header "accept: application/json" --header "authorization: Bearer ${{ secrets.RENDER_API_TOKEN }}" | jq -r ".status")
             echo $DEPLOY_STATUS
-            if [ "$DEPLOY_STATUS" != "live" ]; then
-              exit 1
-            fi
+            if [[ "$DEPLOY_STATUS" == *in_progress* ]]; then exit 1; fi
+            echo "status=$DEPLOY_STATUS" >> "$GITHUB_OUTPUT"
           timeout_minutes: 10
           max_attempts: 60
+      - name: Check deploy status
+        if: steps.deploy.outputs.status != 'live'
+        run: |
+          echo "Deployment failed or incomplete, status = ${{ steps.deploy.outputs.status }}"
+          exit 1

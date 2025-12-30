@@ -106,6 +106,10 @@ def log_photo_transferred(
     logger.info(msg, user_id, new_photo_id, chat_id, status)
 
 
+def log_bot_error(msg: str) -> None:
+    logger.error(f"[BOT] {msg}")
+
+
 # database
 def log_new_entry(jobname: str, chat_id: int) -> None:
     msg = '[DB] Created new job, jobname="%s", chat_id=%s'
@@ -179,12 +183,23 @@ def log_api_send_message(job_id: int, chat_id: int, status_code: int) -> None:
     logger.info(msg, job_id, chat_id, status_code)
 
 
+def log_duplicate(job_id: int, chat_id: int) -> None:
+    msg = '[TELEGRAM API] Job likely being processed by another worker, job_id="%s", chat_id=%s'
+    logger.info(msg, job_id, chat_id)
+
+
 def log_entry_count(count: int) -> None:
     logger.info("[TELEGRAM API] Processing %d message(s) to send this time...", count)
 
 
-def log_completion(total_count: int) -> None:
-    logger.info("[TELEGRAM API] Finished processing %d messages", total_count)
+def log_completion(total_count: int, duration: str) -> None:
+    logger.info(
+        f"[TELEGRAM API] Finished processing {total_count} messages in {duration} seconds"
+    )
+
+
+def log_api_error(msg: str) -> None:
+    logger.error(f"[TELEGRAM API] {msg}")
 
 
 # prometheus

@@ -69,16 +69,14 @@ def simple_group_update():
 
 
 @pytest.fixture
-def simple_context():
-    obj1, obj2 = {}, {}
+def simple_context(mongo_service):
     context = mock.Mock()
-    context.bot_data.__setitem__ = mock.Mock()
-    context.bot_data.__getitem__ = mock.Mock()
-    context.bot_data.__setitem__.side_effect = obj1.__setitem__
-    context.bot_data.__getitem__.side_effect = obj1.__getitem__
-    context.user_data.__setitem__ = mock.Mock()
-    context.user_data.__getitem__ = mock.Mock()
-    context.user_data.__setitem__.side_effect = obj2.__setitem__
-    context.user_data.__getitem__.side_effect = obj2.__getitem__
+
+    context.application = mock.Mock()
+    context.application.bot_data = {"mongo": mongo_service, "http_session": mock.Mock()}
+
+    context.bot_data = {}
+    context.user_data = {}
     context.bot.get_chat_member = mock.AsyncMock()
+
     yield context

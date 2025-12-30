@@ -29,13 +29,12 @@ attrs = [
 ]
 
 # state 0
-
-
 async def choose_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    db_service = mongo.MongoService(update)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
     jobname = str(update.message.text)
 
-    if not dbutils.entry_exists(db_service, update.message.chat.id, jobname):
+    if not await dbutils.entry_exists(db_service, update.message.chat.id, jobname):
         await replies.send_error_message(update)
         return state0
 
@@ -77,22 +76,26 @@ async def toggle_delete_previous(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
-    db_service = mongo.MongoService(update)
-    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
+    entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
     new_option_value = "" if entry.get("option_delete_previous", "") != "" else True
     payload = {
         "option_delete_previous": new_option_value,
         "last_updated_by": update.message.from_user.id,
     }
-    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
     log.log_option_updated(payload, "option_delete_previous", jobname, chat_id)
     await replies.send_attribute_change_success_message(update)
 
 
 async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
-    db_service = mongo.MongoService(update)
-    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
+    entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
     new_option_value = "" if entry.get("paused_ts", "") != "" else utils.now()
     payload = {
         "paused_ts": new_option_value,
@@ -110,7 +113,7 @@ async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "user_nextrun_ts": crontab_payload["user_nextrun_ts"],
             **payload,
         }
-    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
     log.log_option_updated(payload, "paused_ts", jobname, chat_id)
     await replies.send_attribute_change_success_message(update)
 
@@ -121,7 +124,8 @@ async def handle_edit_content(
 ) -> int:
     jobname, attr = context.user_data["jobname"], context.user_data["attribute"]
     chat_id = update.message.chat.id
-    db_service = mongo.MongoService(update)
+
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     if attr == attr_cron:
         crontab = update.message.text
@@ -132,7 +136,7 @@ async def handle_edit_content(
             return state2
         mongo_key = "crontab"
 
-    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
     if attr == attr_content:
         old_content_type = entry.get("content_type", "")
@@ -147,7 +151,7 @@ async def handle_edit_content(
             "content_type": content_type,
         }
 
-    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
     log.log_option_updated(payload, mongo_key, jobname, chat_id)
     await replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
@@ -156,8 +160,9 @@ async def handle_edit_content(
 async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
-    db_service = mongo.MongoService(update)
-    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
+    entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
     poll_json = update.message.poll
     payload = {
@@ -165,7 +170,7 @@ async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "content": jsons.dumps(poll_json),
         "content_type": ContentType.POLL.value,
     }
-    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
     log.log_option_updated(payload, "content", jobname, chat_id)
     await replies.send_attribute_change_success_message(update)
@@ -176,8 +181,9 @@ async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
-    db_service = mongo.MongoService(update)
-    entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
+    entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
     payload = {"last_updated_by": update.message.from_user.id}
     if entry.get("photo_id", "") == "":
@@ -189,7 +195,7 @@ async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         photo_id = update.message.photo[-1].file_id
         photo_ids = "{};{}".format(entry.get("photo_id", ""), photo_id)
         payload["photo_id"] = photo_ids
-    dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+    await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
     log.log_option_updated(payload, "photo_id", jobname, chat_id)
     await replies.send_attribute_change_success_message(update)
@@ -201,14 +207,14 @@ async def handle_clear_photos(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[int]:
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
-    res = await update.message.text.lower()
+    res = update.message.text.lower()
 
     if res == "no":
         return end_convo(update, context)
 
     if res == "yes":
-        db_service = mongo.MongoService(update)
-        entry = dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+        db_service: mongo.MongoService = context.application.bot_data["mongo"]
+        entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
 
         if entry.get("photo_id", "") == "":
             await replies.send_no_photos_to_delete_error_message(update)
@@ -220,7 +226,7 @@ async def handle_clear_photos(
             "photo_id": "",
             "photo_group_id": "",
         }
-        dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
+        await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
         log.log_option_updated(payload, "photo_id", jobname, chat_id)
         await replies.send_attribute_change_success_message(update)

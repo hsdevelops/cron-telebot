@@ -1,26 +1,58 @@
 from contextlib import asynccontextmanager
+import aiohttp
 from fastapi import FastAPI
 import config
 from telegram.ext import Application
 from typing import AsyncGenerator
+from bot.handlers import bot_handlers, handle_error
 
-# https://github.com/python-telegram-bot/python-telegram-bot/wiki/Handling-network-errors
-ptb = (
-    Application.builder()
-    .token(config.TELEGRAM_BOT_TOKEN)
-    .read_timeout(7)
-    .get_updates_read_timeout(42)
-)
-if config.ENV:
-    ptb = ptb.updater(None)
-ptb = ptb.build()
+from database import mongo
+
+db_service = mongo.MongoService(config.MONGODB_CONNECTION_STRING)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncGenerator:
-    if config.BOTHOST:
-        await ptb.bot.setWebhook(config.BOTHOST)
-    async with ptb:
+async def lifespan(app: FastAPI) -> AsyncGenerator:
+    app.state.mongo = db_service
+
+    http_session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30))
+    app.state.http_session = http_session
+
+    # https://github.com/python-telegram-bot/python-telegram-bot/wiki/Handling-network-errors
+    ptb = (
+        Application.builder()
+        .token(config.TELEGRAM_BOT_TOKEN)
+        .read_timeout(7)
+        .get_updates_read_timeout(42)
+        .build()
+    )
+    app.state.ptb = ptb
+
+    await ptb.initialize()
+
+    await ptb.bot.deleteWebhook(drop_pending_updates=False)
+    ptb.bot_data["mongo"] = db_service
+    ptb.bot_data["http_session"] = http_session
+
+    # add handlers
+    ptb.add_error_handler(handle_error)
+    for h in bot_handlers:
+        ptb.add_handler(h)
+
+    if config.BOTHOST is None:
+        # start polling without blocking
         await ptb.start()
+        await ptb.updater.start_polling(drop_pending_updates=False)
+
         yield
+
+        await ptb.updater.stop()
         await ptb.stop()
+    else:
+        await ptb.bot.setWebhook(config.BOTHOST)
+        yield
+
+    await ptb.shutdown()
+    await http_session.close()
+
+    # TODO : close db

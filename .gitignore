@@ -15,6 +15,6 @@ bot.session
 keys.json
 photo-*
 .env
+requirements-dev.txt
 
-!scripts/revive.py
 .*

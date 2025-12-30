@@ -1,4 +1,7 @@
+import asyncio
 import gc
+import time
+import aiohttp
 import psutil
 from http import HTTPStatus
 from prometheus_client import Gauge, generate_latest
@@ -9,16 +12,14 @@ from database import mongo
 from database.dbutils import dbutils
 from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
-from threading import Thread
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from prometheus_fastapi_instrumentator import Instrumentator
 from typing import Any, Optional
 
 import config
 from bot.ptb import lifespan
 
-
-app = FastAPI(lifespan=lifespan) if config.ENV else FastAPI()
+app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
@@ -45,12 +46,13 @@ def prom_endpoint() -> Response:
 
 @app.get("/api")
 @app.post("/api")
-def run() -> Response:
-    db_service = mongo.MongoService()
+async def run(request: Request) -> Response:
+    db_service = request.app.state.mongo
+    http_session = request.app.state.http_session
 
     now = datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
     parsed_time = utils.parse_time_mins(now)
-    entries = dbutils.find_entries_by_nextrun(db_service, parsed_time)
+    entries = await dbutils.find_entries_by_nextrun(db_service, parsed_time)
 
     entry_count = len(entries)
     log.log_entry_count(entry_count)
@@ -60,36 +62,46 @@ def run() -> Response:
         gc.collect()
         return Response(status_code=HTTPStatus.OK)
 
-    for i in range(0, len(entries), config.BATCH_SIZE):
-        batch = entries[i : i + config.BATCH_SIZE]
-        batch_jobs(db_service, batch, parsed_time)
+    # schedule all jobs with concurrency limit
+    start_time = time.perf_counter()
+    sem = asyncio.Semaphore(config.BATCH_SIZE)  # concurrency limiter
+    tasks = [
+        bounded_process_job(db_service, http_session, entry, sem) for entry in entries
+    ]
+    # gather all tasks, exceptions are handled individually inside bounded_process_job
+    await asyncio.gather(*tasks)
+    end_time = time.perf_counter()
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
+
     if config.INFLUXDB_TOKEN:
         dbutils.save_msg_count(entry_count)
-    log.log_completion(entry_count)
+
+    log.log_completion(entry_count, f"{end_time - start_time:.2f}")
     return Response(status_code=HTTPStatus.OK)
 
 
-def batch_jobs(db_service: mongo.MongoService, entries: list, parsed_time: str) -> None:
-    q = []
-    for entry in entries:
-        args = (
-            db_service,
-            entry,
-            parsed_time,
-        )
-        t = Thread(target=process_job, args=args, daemon=True)
-        t.start()
-        q.append(t)
-
-    for t in q:
-        t.join()
+async def bounded_process_job(
+    db_service: mongo.MongoService,
+    http_session: aiohttp.ClientSession,
+    entry: Optional[Any],
+    sem: asyncio.Semaphore,
+):
+    try:
+        # Acquire semaphore safely
+        async with sem:
+            await process_job(db_service, http_session, entry)
+    except Exception as e:
+        log.log_api_error(f"job {entry.get('_id')} failed: {e}")
 
 
-def process_job(
-    db_service: mongo.MongoService, entry: Optional[Any], parsed_time: str
+async def process_job(
+    db_service: mongo.MongoService,
+    http_session: aiohttp.ClientSession,
+    entry: Optional[Any],
 ) -> None:
+    now = utils.now()
+
     job_id = entry["_id"]
     channel_id = entry.get("channel_id", "")
     chat_id = entry.get("chat_id", "")
@@ -108,10 +120,16 @@ def process_job(
     if user_bot_token is None:
         user_bot_token = config.TELEGRAM_BOT_TOKEN
 
-    payload = {"pending_ts": utils.now()}
-    dbutils.update_entry_by_jobname(db_service, entry, payload)
+    payload = {"pending_ts": now}
+    res = await dbutils.update_entry_by_jobname(
+        db_service, entry, payload, q=dbutils.make_due_jobs_query(now)
+    )
+    if res.modified_count <= 0:
+        log.log_duplicate(job_id, chat_id)
+        return
 
-    bot_message_id, status, err = send_message(
+    bot_message_id, status, err = await send_message(
+        http_session,
         job_id,
         chat_id,
         content,
@@ -123,26 +141,29 @@ def process_job(
     )
 
     if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
-        teleapi.delete_message(chat_id, previous_message_id, user_bot_token)
+        await teleapi.delete_message(
+            http_session, chat_id, previous_message_id, user_bot_token
+        )
 
     # calculate and update next run time
-    chat_entry = dbutils.find_chat_by_chatid(db_service, chat_id) or {}
+    chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id) or {}
     user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
     user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
-    errors = [] if err is None else [*errors, {"error": err, "timestamp": parsed_time}]
+    errors = [] if err is None else [*errors, {"error": err, "timestamp": now}]
 
     payload = {
         "pending_ts": None,
         "nextrun_ts": db_nextrun_ts,
         "user_nextrun_ts": user_nextrun_ts,
         "previous_message_id": str(bot_message_id),
-        "removed_ts": parsed_time if len(errors) > config.RETRIES else "",
+        "removed_ts": now if len(errors) > config.RETRIES else "",
         "errors": errors,
     }
-    dbutils.update_entry_by_jobname(db_service, entry, payload)
+    await dbutils.update_entry_by_jobname(db_service, entry, payload)
 
 
-def send_message(
+async def send_message(
+    http_session: aiohttp.ClientSession,
     job_id: int,
     chat_id: int,
     content: str,
@@ -153,30 +174,37 @@ def send_message(
     message_thread_id: int,
 ):
     if photo_group_id != "":  # media group
-        resp = teleapi.send_media_group(
-            chat_id, photo_id, content, user_bot_token, message_thread_id
+        resp = await teleapi.send_media_group(
+            http_session, chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif photo_id != "":  # single photo
-        resp = teleapi.send_single_photo(
-            chat_id, photo_id, content, user_bot_token, message_thread_id
+        resp = await teleapi.send_single_photo(
+            http_session, chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif content_type == ContentType.POLL.value:
-        resp = teleapi.send_poll(chat_id, content, user_bot_token, message_thread_id)
+        resp = await teleapi.send_poll(
+            http_session, chat_id, content, user_bot_token, message_thread_id
+        )
     else:  # text message
-        resp = teleapi.send_text(chat_id, content, user_bot_token, message_thread_id)
+        resp = await teleapi.send_text(
+            http_session, chat_id, content, user_bot_token, message_thread_id
+        )
 
-    log.log_api_send_message(job_id, chat_id, resp.status_code)
+    log.log_api_send_message(job_id, chat_id, resp.get("status"))
 
-    if resp.status_code != 200:
-        err_msg = "Error {}: {}".format(resp.status_code, resp.json()["description"])
-        return "", resp.status_code, err_msg
+    json = resp.get("json")
+
+    if resp.get("status") != 200:
+        err_msg = "Error {}: {}".format(resp.get("status"), json["description"])
+        return "", resp.get("status"), err_msg
 
     if photo_group_id != "":
-        msg_ids = [str(message["message_id"]) for message in resp.json()["result"]]
-        return ";".join(msg_ids), resp.status_code, None
+        msg_ids = [str(message["message_id"]) for message in json["result"]]
+        return ";".join(msg_ids), resp.get("status"), None
 
-    return resp.json()["result"]["message_id"], resp.status_code, None
+    return json["result"]["message_id"], resp.get("status"), None
 
 
+# Run api only
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
