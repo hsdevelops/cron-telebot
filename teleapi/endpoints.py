@@ -26,7 +26,7 @@ async def send_media_group(
     user_bot_token: str,
     message_thread_id: int,
 ) -> ClientResponse:
-    media, files = await prepare_photos(photo_id, content)
+    media, files = await prepare_photos(http_session, photo_id, content)
     query = {
         "chat_id": chat_id,
         "media": media,
@@ -149,11 +149,13 @@ async def delete_message(
     return json["ok"]
 
 
-async def prepare_photos(photo_id: str, content: str) -> Tuple[str, Dict[str, Any]]:
+async def prepare_photos(
+    http_session: ClientSession, photo_id: str, content: str
+) -> Tuple[str, Dict[str, Any]]:
     photo_ids = photo_id.split(";")
     media, files = [], {}
     for i, photo_id in enumerate(photo_ids):
-        files = await download_photo(files, photo_id)
+        files = await download_photo(http_session, files, photo_id)
         media.append(
             {
                 "type": "photo",
