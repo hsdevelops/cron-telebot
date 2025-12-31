@@ -38,8 +38,9 @@ def prom_endpoint() -> Response:
     cpu_usage.set(cpu_percent)
     memory_usage.set(memory_percent)
 
-    log.log_update_prometheus("cpu_usage", cpu_percent)
-    log.log_update_prometheus("memory_usage", memory_percent)
+    log.logger.info(
+        f"[PROMETHEUS] Updated Prometheus, cpu_usage={cpu_percent}, memory_usage={memory_percent}"
+    )
 
     return Response(content=generate_latest(), media_type="text/plain")
 
@@ -55,10 +56,11 @@ async def run(request: Request) -> Response:
     entries = await dbutils.find_entries_by_nextrun(db_service, parsed_time)
 
     entry_count = len(entries)
-    log.log_entry_count(entry_count)
+    log.logger.info(
+        f"[TELEGRAM API] Processing {entry_count} message(s) to send this time..."
+    )
 
     if entry_count < 1:
-        log.log_completion(0)
         gc.collect()
         return Response(status_code=HTTPStatus.OK)
 
@@ -77,7 +79,10 @@ async def run(request: Request) -> Response:
     if config.INFLUXDB_TOKEN:
         dbutils.save_msg_count(entry_count)
 
-    log.log_completion(entry_count, f"{end_time - start_time:.2f}")
+    log.logger.info(
+        f"[TELEGRAM API] Finished processing {entry_count} messages in {end_time - start_time:.2f} seconds"
+    )
+
     return Response(status_code=HTTPStatus.OK)
 
 
@@ -92,7 +97,9 @@ async def bounded_process_job(
         async with sem:
             await process_job(db_service, http_session, entry)
     except Exception as e:
-        log.log_api_error(f"job {entry.get('_id')} failed: {e}")
+        log.logger.error(
+            f"[TELEGRAM API] job {entry.get('_id')} failed: {type(e).__name__} - {repr(e)}"
+        )
 
 
 async def process_job(
@@ -125,7 +132,9 @@ async def process_job(
         db_service, entry, payload, q=dbutils.make_due_jobs_query(now)
     )
     if res.modified_count <= 0:
-        log.log_duplicate(job_id, chat_id)
+        log.logger.info(
+            f'[TELEGRAM API] Job likely being processed by another worker, job_id="{job_id}", chat_id={chat_id}'
+        )
         return
 
     bot_message_id, status, err = await send_message(
@@ -190,21 +199,23 @@ async def send_message(
             http_session, chat_id, content, user_bot_token, message_thread_id
         )
 
-    log.log_api_send_message(job_id, chat_id, resp.get("status"))
+    log.logger.info(
+        f'[TELEGRAM API] Sent message, job_id="{job_id}", chat_id={chat_id}, response_status={resp.get("status")}'
+    )
 
-    json = resp.get("json")
+    json = resp.get("json", {})
 
     if resp.get("status") != 200:
         err_msg = "Error {}: {}".format(resp.get("status"), json["description"])
         return "", resp.get("status"), err_msg
 
     if photo_group_id != "":
-        msg_ids = [str(message["message_id"]) for message in json["result"]]
+        msg_ids = [str(message["message_id"]) for message in json.get("result", [])]
         return ";".join(msg_ids), resp.get("status"), None
 
-    return json["result"]["message_id"], resp.get("status"), None
+    return json.get("result", {}).get("message_id", ""), resp.get("status"), None
 
 
 # Run api only
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_config=log.log_config)

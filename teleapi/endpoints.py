@@ -143,8 +143,8 @@ async def delete_message(
         endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/deleteMessage?chat_id={chat_id}&message_id={message_id}"
         response = await request(http_session, endpoint)
         json = response.get("json")
-        log.log_api_previous_message_deletion(
-            chat_id, message_id, response.get("status")
+        log.logger.info(
+            f'[TELEGRAM API] Deleted previous message, response_status={response.get("status")}, chat_id={chat_id}, message_id={message_id}'
         )
     return json["ok"]
 

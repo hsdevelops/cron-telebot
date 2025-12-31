@@ -7,6 +7,7 @@ from common.enums import ContentType
 from database import mongo
 from database.dbutils import dbutils
 from common import log, utils
+
 import jsons
 from typing import Optional
 
@@ -86,7 +87,10 @@ async def toggle_delete_previous(
         "last_updated_by": update.message.from_user.id,
     }
     await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
-    log.log_option_updated(payload, "option_delete_previous", jobname, chat_id)
+    option = "option_delete_previous"
+    log.logger.info(
+        f'[BOT] User "{payload["last_updated_by"]}" updated option "{option}" to "{payload[option]}" for job "{jobname}", chat_id={chat_id}'
+    )
     await replies.send_attribute_change_success_message(update)
 
 
@@ -114,7 +118,10 @@ async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             **payload,
         }
     await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
-    log.log_option_updated(payload, "paused_ts", jobname, chat_id)
+    option = "paused_ts"
+    log.logger.info(
+        f'[BOT] User "{payload["last_updated_by"]}" updated option "{option}" to "{payload[option]}" for job "{jobname}", chat_id={chat_id}'
+    )
     await replies.send_attribute_change_success_message(update)
 
 
@@ -152,7 +159,9 @@ async def handle_edit_content(
         }
 
     await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
-    log.log_option_updated(payload, mongo_key, jobname, chat_id)
+    log.logger.info(
+        f'[BOT] User "{payload["last_updated_by"]}" updated option "{mongo_key}" to "{payload[mongo_key]}" for job "{jobname}", chat_id={chat_id}'
+    )
     await replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
 
@@ -171,8 +180,10 @@ async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "content_type": ContentType.POLL.value,
     }
     await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
-
-    log.log_option_updated(payload, "content", jobname, chat_id)
+    option = "content"
+    log.logger.info(
+        f'[BOT] User "{payload["last_updated_by"]}" updated option "{option}" to "{payload[option]}" for job "{jobname}", chat_id={chat_id}'
+    )
     await replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
 
@@ -196,8 +207,10 @@ async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         photo_ids = "{};{}".format(entry.get("photo_id", ""), photo_id)
         payload["photo_id"] = photo_ids
     await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
-
-    log.log_option_updated(payload, "photo_id", jobname, chat_id)
+    option = "photo_id"
+    log.logger.info(
+        f'[BOT] User "{payload["last_updated_by"]}" updated option "{option}" to "{payload[option]}" for job "{jobname}", chat_id={chat_id}'
+    )
     await replies.send_attribute_change_success_message(update)
     return ConversationHandler.END
 
@@ -228,7 +241,10 @@ async def handle_clear_photos(
         }
         await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
 
-        log.log_option_updated(payload, "photo_id", jobname, chat_id)
+        option = "photo_id"
+        log.logger.info(
+            f'[BOT] User "{payload["last_updated_by"]}" updated option "{option}" to "{payload[option]}" for job "{jobname}", chat_id={chat_id}'
+        )
         await replies.send_attribute_change_success_message(update)
         return ConversationHandler.END
 

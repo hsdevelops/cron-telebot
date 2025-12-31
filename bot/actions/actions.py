@@ -52,7 +52,9 @@ async def add_new_job(
         message_thread_id=msg.message_thread_id if msg.is_topic_message else None,
     )
     await replies.send_request_text_message(update)
-    log.log_new_job_added(update)
+    log.logger.info(
+        f'[BOT] User "{update.message.from_user.id}" added new job "{update.message.text}" in room "{update.message.chat.title}", chat_id={update.message.chat.id}'
+    )
 
 
 async def add_new_channel_job(
@@ -147,7 +149,9 @@ async def add_new_channel_job(
         message_thread_id=None,
     )
 
-    log.log_new_channel_job_added(update)
+    log.logger.info(
+        f'[BOT] User "{update.message.from_user.id}" added new job/content for a channel, chat_id={update.message.chat.id}'
+    )
     await replies.send_request_crontab_message(update)
 
 
@@ -207,7 +211,9 @@ async def add_new_jobs(
         successful_creation.append("%s: (%s) %s" % (jobname, crontab, text_content))
 
     if len(successful_creation) > 0:
-        log.log_new_jobs_added(update, " // ".join(successful_creation))
+        log.logger.info(
+            f'[BOT] User "{update.message.from_user.id}" added several jobs "{" // ".join(successful_creation)}" in room "{update.message.chat.title}", chat_id={update.message.chat.id}'
+        )
         postfix = "\n".join("• %s" % x for x in successful_creation)
         await replies.send_jobs_creation_success_message(update, postfix)
     else:
@@ -302,7 +308,9 @@ async def add_message(
         payload["content_type"] = ContentType.TEXT.value
 
     await dbutils.update_entry_by_jobname(db_service, entry, payload)
-    log.log_new_content_added(last_updated_by, entry.get("jobname"), chat_id)
+    log.logger.info(
+        f'[BOT] User "{last_updated_by}" added new message content for job "{entry.get("jobname")}", chat_id={chat_id}'
+    )
 
     # reply
     if not same_photo_group:
@@ -364,7 +372,9 @@ async def update_crontab(
     user_id = update.message.from_user.id
     jobname, chat_id = entry.get("jobname"), entry.get("chat_id")
     await dbutils.update_entry_by_jobname(db_service, entry, payload)
-    log.log_crontab_updated(user_id, jobname, chat_id)
+    log.logger.info(
+        f'[BOT] User "{user_id}" added new crontab for job "{jobname}", chat_id={chat_id}'
+    )
 
     # special case — transfer photo ownership to new sender
     is_single_photo = entry["content_type"] == ContentType.PHOTO.value
@@ -373,7 +383,9 @@ async def update_crontab(
         resp, new_photo_id = await teleapi.transfer_photo_between_bots(
             http_session, db_service, bot_token, None, chat_id, entry
         )
-        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.get("status"))
+        log.logger.info(
+            f'[BOT] User "{user_id}" transferred photo "{new_photo_id}", chat_id="{chat_id}", status={resp.get("status")}'
+        )
 
     await replies.send_confirm_message(update, entry, description)
 

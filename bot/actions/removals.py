@@ -19,7 +19,9 @@ async def reset_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     chat_id = update.callback_query.message.chat_id
     await dbutils.remove_entries_by_chat(db_service, chat_id)
 
-    log.log_chat_reset(update)
+    log.logger.info(
+        f'[BOT] User "{update.callback_query.from_user.id}" reset chat, chat_id={update.callback_query.message.chat_id}'
+    )
     await replies.send_reset_success_message(context, chat_id)
 
 
@@ -45,5 +47,7 @@ async def remove_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     }
     await dbutils.update_entry_by_jobname(db_service, entry, payload)
 
-    log.log_job_removed(last_updated_by, entry.get("jobname"), chat_id)
+    log.logger.info(
+        f'[BOT] User "{last_updated_by}" removed job "{entry.get("jobname")}", chat_id={chat_id}'
+    )
     await replies.send_delete_success_message(update)

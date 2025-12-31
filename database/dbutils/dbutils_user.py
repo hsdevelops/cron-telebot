@@ -36,7 +36,7 @@ async def add_user(
         "field_changed": "",
     }
     await db_service.insert_new_user(new_doc)
-    log.log_new_user(user_id, username)
+    log.logger.info(f'[DB] Created new user, user_id={user_id}, username="{username}"')
 
 
 async def supersede_user(
@@ -46,7 +46,9 @@ async def supersede_user(
     q = {"_id": entry["_id"]}
     payload = {"superseded_at": utils.now(), "field_changed": field_changed}
     await db_service.update_one_user(q, payload)
-    log.log_user_updated(entry)
+    log.logger.info(
+        f'[DB] Superseded user, user_id={entry.get("user_id")}, field_changed="{entry.get("field_changed")}"'
+    )
 
 
 async def refresh_user(db_service: MongoService, entry: Optional[Any]) -> None:
@@ -76,12 +78,18 @@ async def sync_user_data(db_service: MongoService, update: Update) -> None:
         supersede_user(db_service, user, "username")
         add_user(db_service, user_id, username, user.get("first_name", ""))
         sync_user_data(db_service, update)
-        return log.log_username_updated(update)
+        log.logger.info(
+            f"[DB] Superseded username, new username={update.message.from_user.username}, user_id={update.message.from_user.id}"
+        )
+        return
 
     # check that firstname hasn't changed
     if update.message.from_user.first_name != str(user.get("first_name", "")):
         supersede_user(db_service, user, "first_name")
         add_user(db_service, user_id, username, first_name)
-        return log.log_firstname_updated(update)
+        log.logger.info(
+            f"[DB] Superseded first_name, new first_name={update.message.from_user.first_name}, username={update.message.from_user.username}, user_id={update.message.from_user.id}"
+        )
+        return
 
     refresh_user(db_service, user)

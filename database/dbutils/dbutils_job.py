@@ -1,8 +1,7 @@
 from pymongo import ASCENDING, DESCENDING
-from common import utils
+from common import utils, log
 from common.enums import ContentType
 from database.mongo import MongoService
-from common import log, utils
 from typing import List, Optional, Dict, Any
 from pymongo.results import UpdateResult
 
@@ -138,7 +137,7 @@ async def add_new_entry(
         }
     )
 
-    log.log_new_entry(jobname, chat_id)
+    log.logger.info(f'[DB] Created new job, jobname="{jobname}", chat_id={chat_id}')
 
 
 async def update_entry_by_jobname(

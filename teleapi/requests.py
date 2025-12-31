@@ -1,13 +1,15 @@
 from typing import Any, Dict, Optional
 import aiohttp
 
+from common import log
+
 
 async def request(
     session: aiohttp.ClientSession,
     url,
     method="GET",
     files: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict:
 
     if files:
@@ -16,17 +18,32 @@ async def request(
             form.add_field(key, file_obj, filename=getattr(file_obj, "name", key))
         kwargs["data"] = form
 
-    async with session.request(method, url, **kwargs) as response:
-        content_type = response.headers.get("Content-Type", "")
+    try:
+        async with session.request(method, url, **kwargs) as response:
+            content_type = response.headers.get("Content-Type", "")
 
-        json_body = None
-        if "application/json" in content_type:
-            json_body = await response.json()
+            json_body = None
+            if "application/json" in content_type:
+                json_body = await response.json()
 
-        content = await response.read()
+            content = await response.read()
 
+            return {
+                "status": response.status,
+                "json": json_body,
+                "content": content,
+            }
+
+    except aiohttp.ClientResponseError as e:
+        log.logger.warning(f"[API] status = {e.status}, {type(e).__name__} - {repr(e)}")
         return {
-            "status": response.status,
-            "json": json_body,
-            "content": content,
+            "status": e.status,
+            "error": str(e),
+        }
+
+    except aiohttp.ClientError as e:
+        log.logger.warning(f"[API] {type(e).__name__} - {repr(e)}")
+        return {
+            "status": None,
+            "error": str(e),
         }

@@ -10,8 +10,8 @@ class MongoService:
         # Provide the mongodb atlas url to connect python to mongodb using pymongo
 
         # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
-        client = AsyncIOMotorClient(conn_str)
-        self.db = client[config.MONGODB_DB]
+        self.client = AsyncIOMotorClient(conn_str)
+        self.db = self.client[config.MONGODB_DB]
         self.main_collection = self.db[config.MONGODB_JOB_DATA_COLLECTION]
         self.chat_data_collection = self.db[config.MONGODB_CHAT_DATA_COLLECTION]
         self.user_data_collection = self.db[config.MONGODB_USER_DATA_COLLECTION]
@@ -23,6 +23,9 @@ class MongoService:
     def get_collection(self, collection_name: str) -> AsyncIOMotorCollection:
         db = getattr(self, "db")
         return getattr(db, collection_name)
+
+    def disconnect(self) -> AsyncIOMotorCollection:
+        self.client.close()
 
     async def insert_new_entry(self, q: Optional[Any]) -> None:
         now = utils.now()

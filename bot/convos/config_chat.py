@@ -96,9 +96,12 @@ async def reset_sender(
         resp, new_photo_id = await teleapi.transfer_photo_between_bots(
             http_session, db_service, new_token, prev_token, chat_id, entry
         )
-        if resp.get("status") != 200:
+        status = resp.get("status")
+        if status != 200:
             return True
-        log.log_photo_transferred(user_id, new_photo_id, chat_id, resp.get("status"))
+        log.logger.info(
+            f'[BOT] User "{user_id}" transferred photo "{new_photo_id}", chat_id="{chat_id}", status={status}'
+        )
 
     # jobs
     q = {"$or": [{"chat_id": chat_id}, {"channel_id": chat_id}]}
@@ -110,5 +113,7 @@ async def reset_sender(
     payload = {"user_bot_token": new_token}
     await dbutils.update_chat_entry(db_service, chat_id, payload, updated_field=field)
 
-    log.log_sender_updated(user_id, prev_token, new_token, chat_id)
+    log.logger.info(
+        f'[BOT] User "{user_id}" updated sender from "{prev_token}" to "{new_token}", chat_id={chat_id}'
+    )
     return False

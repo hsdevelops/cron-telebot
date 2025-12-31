@@ -62,7 +62,9 @@ async def add_chat_data(
         "user_bot_token": None,
     }
     await db_service.insert_new_chat(new_doc)
-    log.log_new_chat(chat_id, chat_title)
+    log.logger.info(
+        f"[DB] Created new chat entry, chat_id={chat_id}, chat_title={chat_title}"
+    )
 
 
 async def update_chats_tz_by_type(
@@ -76,7 +78,9 @@ async def update_chats_tz_by_type(
     q = {"created_by": user_id, "chat_type": chat_type}
     mongo_response = await db_service.update_chat_entries(q, payload)
     modified_count = mongo_response.modified_count
-    log.log_chats_tz_updated_by_type(modified_count, user_id, chat_type, tz_offset)
+    log.logger.info(
+        f"[DB] Bulk updated timezone for {modified_count} chats, chat_type={chat_type}, user_id={user_id}, new tz_offset={tz_offset}"
+    )
 
 
 async def update_chat_entry(
@@ -87,4 +91,6 @@ async def update_chat_entry(
 ) -> None:
     q = {"chat_id": chat_id}
     await db_service.update_one_chat_entry(q, update)
-    log.log_chat_entry_updated(chat_id, updated_field, update[updated_field])
+    log.logger.info(
+        f'[DB] Updated chat {updated_field} to "{update[updated_field]}", chat_id={chat_id}'
+    )

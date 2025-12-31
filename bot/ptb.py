@@ -8,11 +8,10 @@ from bot.handlers import bot_handlers, handle_error
 
 from database import mongo
 
-db_service = mongo.MongoService(config.MONGODB_CONNECTION_STRING)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
+    db_service = mongo.MongoService(config.MONGODB_CONNECTION_STRING)
     app.state.mongo = db_service
 
     http_session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30))
@@ -39,20 +38,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     for h in bot_handlers:
         ptb.add_handler(h)
 
+    # polling
     if config.BOTHOST is None:
-        # start polling without blocking
-        await ptb.start()
-        await ptb.updater.start_polling(drop_pending_updates=False)
+        try:
+            await ptb.start()
+            await ptb.updater.start_polling(drop_pending_updates=False)
+            yield
+        finally:
+            await ptb.updater.stop()
+            await ptb.stop()
+            await ptb.shutdown()
+            await http_session.close()
+            db_service.disconnect()
+        return
 
-        yield
-
-        await ptb.updater.stop()
-        await ptb.stop()
-    else:
+    # webhook
+    try:
         await ptb.bot.setWebhook(config.BOTHOST)
         yield
-
-    await ptb.shutdown()
-    await http_session.close()
-
-    # TODO : close db
+    finally:
+        await ptb.shutdown()
+        await http_session.close()
+        db_service.disconnect()

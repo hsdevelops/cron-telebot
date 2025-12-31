@@ -23,4 +23,4 @@ async def upsert_new_bot(
     q = {"id": bot_data["id"]}
     payload = {**bot_data}
     await db_service.update_one_bot(q, payload)
-    log.log_bot_updated(user_id, bot_data)
+    log.logger.info(f'[BOT] User "{user_id}" upserted bot "{bot_data.get("username")}"')

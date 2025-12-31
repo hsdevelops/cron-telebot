@@ -139,7 +139,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def handle_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
-    log.log_bot_error(f'Update "{update}" caused error "{context.error}"')
+    log.logger.error(f'[BOT] Update "{update}" caused error "{context.error}"')
 
 
 bot_handlers = [
