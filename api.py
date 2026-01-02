@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from teleapi import endpoints as teleapi
 from fastapi import FastAPI, Request, Response
 from prometheus_fastapi_instrumentator import Instrumentator
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import config
 from bot.ptb import lifespan
@@ -98,7 +98,7 @@ async def bounded_process_job(
             await process_job(db_service, http_session, entry)
     except Exception as e:
         log.logger.error(
-            f"[TELEGRAM API] job {entry.get('_id')} failed: {type(e).__name__} - {repr(e)}"
+            f"[TELEGRAM API] Job {entry.get('_id')} failed: {type(e).__name__} - {repr(e)}"
         )
 
 
@@ -121,6 +121,8 @@ async def process_job(
     crontab = entry.get("crontab", "")
     previous_message_id = str(entry.get("previous_message_id", ""))
     message_thread_id = entry.get("message_thread_id", None)
+    db_nextrun_ts = entry.get("nextrun_ts", "")
+    user_nextrun_ts = entry.get("user_nextrun_ts", "")
     errors = entry.get("errors", [])
 
     user_bot_token = entry.get("user_bot_token")
@@ -137,7 +139,8 @@ async def process_job(
         )
         return
 
-    bot_message_id, status, err = await send_message(
+    # process messages
+    bot_message_id, err = await send_message(
         http_session,
         job_id,
         chat_id,
@@ -149,16 +152,19 @@ async def process_job(
         message_thread_id,
     )
 
-    if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
-        await teleapi.delete_message(
-            http_session, chat_id, previous_message_id, user_bot_token
-        )
+    errors = [*errors, {"error": err, "timestamp": now}]
 
-    # calculate and update next run time
-    chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id) or {}
-    user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
-    user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
-    errors = [] if err is None else [*errors, {"error": err, "timestamp": now}]
+    if err is None:
+        if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
+            await teleapi.delete_message(
+                http_session, chat_id, previous_message_id, user_bot_token
+            )
+
+        # calculate and update next run time
+        chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id) or {}
+        user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+        errors = []
 
     payload = {
         "pending_ts": None,
@@ -181,9 +187,12 @@ async def send_message(
     photo_group_id: str,
     user_bot_token: str,
     message_thread_id: int,
-):
+) -> Tuple[str, Optional[str]]:
+
+    err = None
+
     if photo_group_id != "":  # media group
-        resp = await teleapi.send_media_group(
+        resp, err = await teleapi.send_media_group(
             http_session, chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif photo_id != "":  # single photo
@@ -199,21 +208,29 @@ async def send_message(
             http_session, chat_id, content, user_bot_token, message_thread_id
         )
 
+    if err is not None:
+        log.logger.warning(
+            f'[TELEGRAM API] Failed to send message, job_id="{job_id}", chat_id={chat_id}, err={err}'
+        )
+        return "", err
+
     log.logger.info(
         f'[TELEGRAM API] Sent message, job_id="{job_id}", chat_id={chat_id}, response_status={resp.get("status")}'
     )
 
     json = resp.get("json", {})
+    status = resp.get("status")
 
-    if resp.get("status") != 200:
-        err_msg = "Error {}: {}".format(resp.get("status"), json["description"])
-        return "", resp.get("status"), err_msg
+    if status != 200:
+        err = "Error {}: {}".format(status, json["description"])
+        return "", err
 
     if photo_group_id != "":
         msg_ids = [str(message["message_id"]) for message in json.get("result", [])]
-        return ";".join(msg_ids), resp.get("status"), None
+        return ";".join(msg_ids), None
 
-    return json.get("result", {}).get("message_id", ""), resp.get("status"), None
+    message_id = json.get("result", {}).get("message_id", "")
+    return message_id, None
 
 
 # Run api only

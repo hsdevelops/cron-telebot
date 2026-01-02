@@ -1,7 +1,14 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypedDict
 import aiohttp
 
 from common import log
+
+
+class RequestResponse(TypedDict):
+    message_id: Optional[str]
+    status: int
+    content: Optional[bytes]
+    error: Optional[str]
 
 
 async def request(
@@ -10,7 +17,7 @@ async def request(
     method="GET",
     files: Optional[Dict[str, Any]] = None,
     **kwargs,
-) -> Dict:
+) -> RequestResponse:
 
     if files:
         form = aiohttp.FormData()

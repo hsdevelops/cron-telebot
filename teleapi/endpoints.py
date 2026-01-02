@@ -1,19 +1,19 @@
 import json
 import os
 
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientSession
 from common import log
 from urllib.parse import urlencode
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_API_BASE_URL
 from database.dbutils import dbutils
 from typing import Optional, Any, Dict, Tuple
 from database import mongo
-from teleapi.requests import request
+from teleapi.requests import RequestResponse, request
 
 
 async def get_bot_details(
     http_session: ClientSession, user_bot_token: str
-) -> ClientResponse:
+) -> RequestResponse:
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/getMe"
     return await request(http_session, endpoint)
 
@@ -25,8 +25,11 @@ async def send_media_group(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> ClientResponse:
-    media, files = await prepare_photos(http_session, photo_id, content)
+) -> Tuple[RequestResponse, Optional[str]]:
+    media, files, err = await prepare_photos(http_session, photo_id, content)
+    if err is not None:
+        return RequestResponse(), err
+
     query = {
         "chat_id": chat_id,
         "media": media,
@@ -36,7 +39,8 @@ async def send_media_group(
     endpoint = (
         f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMediaGroup?{query_string}"
     )
-    return await request(http_session, endpoint, method="POST", files=files)
+    resp = await request(http_session, endpoint, method="POST", files=files)
+    return resp, None
 
 
 async def send_single_photo(
@@ -46,7 +50,7 @@ async def send_single_photo(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> ClientResponse:
+) -> RequestResponse:
     query = {
         "chat_id": chat_id,
         "photo": photo_id,
@@ -56,7 +60,8 @@ async def send_single_photo(
     }
     query_string = urlencode(query)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendPhoto?{query_string}"
-    return await request(http_session, endpoint)
+    resp = await request(http_session, endpoint)
+    return resp
 
 
 async def send_single_photo_local(
@@ -67,7 +72,9 @@ async def send_single_photo_local(
     photo: Optional[str] = None,
     remote_photo_id: Optional[str] = None,
     prev_token: Optional[str] = None,
-) -> ClientResponse:
+) -> Tuple[RequestResponse, Optional[str]]:
+    err = None
+
     if photo is None and remote_photo_id is None:
         raise ValueError("Either photo or remote_photo_id must be specified")
     if remote_photo_id is not None and prev_token is None:
@@ -75,11 +82,16 @@ async def send_single_photo_local(
     if new_token is None:
         new_token = TELEGRAM_BOT_TOKEN
     if remote_photo_id is not None:
-        files = await download_photo(http_session, {}, remote_photo_id, prev_token)
+        files, err = await download_photo(http_session, {}, remote_photo_id, prev_token)
         photo = files[remote_photo_id]
+
+    if err is not None:
+        return RequestResponse(), err
+
     query_string = urlencode({"chat_id": chat_id, "caption": content})
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{new_token}/sendPhoto?{query_string}"
-    return await request(http_session, endpoint, method="POST", files={"photo": photo})
+    resp = await request(http_session, endpoint, method="POST", files={"photo": photo})
+    return resp, None
 
 
 async def send_poll(
@@ -88,7 +100,7 @@ async def send_poll(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> ClientResponse:
+) -> RequestResponse:
     poll_content = json.loads(content)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendPoll"
     parameters = {
@@ -107,7 +119,8 @@ async def send_poll(
         "close_date": poll_content.get("close_date"),
         "reply_to_message_id": message_thread_id,
     }
-    return await request(http_session, endpoint, data=parameters)
+    resp = await request(http_session, endpoint, data=parameters)
+    return resp
 
 
 async def send_text(
@@ -116,7 +129,7 @@ async def send_text(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> ClientResponse:
+) -> RequestResponse:
     query = {
         "chat_id": chat_id,
         "text": content,
@@ -125,7 +138,8 @@ async def send_text(
     }
     query_string = urlencode(query)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMessage?{query_string}"
-    return await request(http_session, endpoint)
+    resp = await request(http_session, endpoint)
+    return resp
 
 
 async def delete_message(
@@ -151,11 +165,14 @@ async def delete_message(
 
 async def prepare_photos(
     http_session: ClientSession, photo_id: str, content: str
-) -> Tuple[str, Dict[str, Any]]:
+) -> Tuple[str, Dict[str, Any], Optional[str]]:
     photo_ids = photo_id.split(";")
     media, files = [], {}
     for i, photo_id in enumerate(photo_ids):
-        files = await download_photo(http_session, files, photo_id)
+        files, err = await download_photo(http_session, files, photo_id)
+        if err is not None:
+            return json.dumps(media), files, err
+
         media.append(
             {
                 "type": "photo",
@@ -163,7 +180,7 @@ async def prepare_photos(
                 "caption": content if i <= 0 else "",
             }
         )
-    return json.dumps(media), files
+    return json.dumps(media), files, None
 
 
 async def download_photo(
@@ -171,19 +188,30 @@ async def download_photo(
     files: Dict[str, Any],
     photo_id: str,
     bot_token: Optional[str] = TELEGRAM_BOT_TOKEN,
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], Optional[str]]:
     file_details_endpoint = (
         f"{TELEGRAM_API_BASE_URL}/bot{bot_token}/getFile?file_id={photo_id}"
     )
     file_details_response = await request(http_session, file_details_endpoint)
+    if file_details_response.get("status") != 200:
+        err = f'Failed to get file details, bot_token = {bot_token}, photo_id = {photo_id}, status = {file_details_response.get("status")}'
+        log.logger.warning(f"[TELEGRAM API] {err}")
+        return files, err
+
     json = file_details_response.get("json")
     file_path = json["result"]["file_path"]
     file_url = f"{TELEGRAM_API_BASE_URL}/file/bot{bot_token}/{file_path}"
     file_response = await request(http_session, file_url)
+
+    if file_response.get("status") != 200:
+        err = f'Failed to get file, bot_token = {bot_token}, photo_id = {photo_id}, status = {file_response.get("status")}'
+        log.logger.warning(f"[TELEGRAM API] {err}")
+        return files, err
+
     open(photo_id, "wb").write(file_response.get("content"))
     files[photo_id] = open(photo_id, "rb")
     os.remove(photo_id)
-    return files
+    return files, None
 
 
 async def transfer_photo_between_bots(
@@ -193,8 +221,8 @@ async def transfer_photo_between_bots(
     prev_token: Optional[str],
     chat_id: int,
     entry: Optional[Any],
-) -> Tuple[ClientResponse, Optional[str]]:
-    resp = await send_single_photo_local(
+) -> Tuple[RequestResponse, Optional[str]]:
+    resp, err = await send_single_photo_local(
         http_session,
         new_token=new_token,
         chat_id=chat_id,
@@ -202,13 +230,24 @@ async def transfer_photo_between_bots(
         remote_photo_id=entry["photo_id"],
         prev_token=prev_token,
     )
-    new_photo_id = None
-    if resp.get("status") == 200:
-        json = resp.get("json")
-        new_photo_id = json["result"]["photo"][-1]["file_id"]
-        q = {"photo_id": new_photo_id}
-        await dbutils.update_entry_by_jobid(db_service, entry["_id"], q)
-        await delete_message(
-            http_session, chat_id, str(json["result"]["message_id"]), new_token
+
+    if err is not None:
+        log.logger.warning(
+            f"[TELEGRAM API] failed to transfer photo between bots, err={err}"
         )
+        return resp, err
+
+    if resp.get("status") != 200:
+        log.logger.warning(
+            f'[TELEGRAM API] failed to transfer photo between bots, status={resp.get("status")}'
+        )
+        return resp, None
+
+    json = resp.get("json")
+    new_photo_id = json["result"]["photo"][-1]["file_id"]
+    q = {"photo_id": new_photo_id}
+    await dbutils.update_entry_by_jobid(db_service, entry["_id"], q)
+    await delete_message(
+        http_session, chat_id, str(json["result"]["message_id"]), new_token
+    )
     return resp, new_photo_id
