@@ -50,6 +50,7 @@ def prom_endpoint() -> Response:
 async def run(request: Request) -> Response:
     db_service = request.app.state.mongo
     http_session = request.app.state.http_session
+    influx_db = request.app.state.influx
 
     now = datetime.now(timezone(timedelta(hours=config.TZ_OFFSET)))
     parsed_time = utils.parse_time_mins(now)
@@ -77,7 +78,7 @@ async def run(request: Request) -> Response:
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
 
     if config.INFLUXDB_TOKEN:
-        dbutils.save_msg_count(entry_count)
+        dbutils.save_msg_count(influx_db, entry_count)
 
     log.logger.info(
         f"[TELEGRAM API] Finished processing {entry_count} messages in {end_time - start_time:.2f} seconds"
