@@ -119,9 +119,7 @@ def keyboard_from_dict(
 
 keyboards = SimpleNamespace(
     **{
-        "cron": keyboard(
-            [["* * * * * *", "*/5 * * * *"], ["0 0 * * *", "30 9 * * 1-5"]]
-        ),
+        "cron": keyboard([["0 9 * * *", "*/5 * * * *"], ["0 0 * * 0", "30 22 1 * *"]]),
         "attrs": keyboard(
             [edit.attrs[i : i + 2] for i in range(0, len(edit.attrs), 2)]
         ),
