@@ -220,14 +220,15 @@ async def transfer_photo_between_bots(
     new_token: Optional[str],
     prev_token: Optional[str],
     chat_id: int,
-    entry: Optional[Any],
+    photo_id: str,
+    job_id: str,
 ) -> Tuple[RequestResponse, Optional[str]]:
     resp, err = await send_single_photo_local(
         http_session,
         new_token=new_token,
         chat_id=chat_id,
         content="Transferring photo between bots...",
-        remote_photo_id=entry["photo_id"],
+        remote_photo_id=photo_id,
         prev_token=prev_token,
     )
 
@@ -246,7 +247,7 @@ async def transfer_photo_between_bots(
     json = resp.get("json")
     new_photo_id = json["result"]["photo"][-1]["file_id"]
     q = {"photo_id": new_photo_id}
-    await dbutils.update_entry_by_jobid(db_service, entry["_id"], q)
+    await dbutils.update_entry_by_jobid(db_service, job_id, q)
     await delete_message(
         http_session, chat_id, str(json["result"]["message_id"]), new_token
     )

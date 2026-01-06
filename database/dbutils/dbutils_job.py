@@ -3,7 +3,9 @@ from common import utils, log
 from common.enums import ContentType
 from database.mongo import MongoService
 from typing import List, Optional, Dict, Any
-from pymongo.results import UpdateResult
+from pymongo.results import UpdateResult, InsertOneResult
+from pymongo.errors import PyMongoError
+
 
 """
 Queries
@@ -111,33 +113,38 @@ async def add_new_entry(
     user_bot_token: Optional[str] = None,
     message_thread_id: Optional[int] = None,
     errors: List[Exception] = [],
-) -> None:
-    await db_service.insert_new_entry(
-        {
-            "created_by": user_id,
-            "last_updated_by": user_id,
-            "chat_id": chat_id,
-            "channel_id": channel_id,
-            "jobname": jobname,
-            "crontab": crontab,
-            "content": content,
-            "content_type": content_type,
-            "photo_id": photo_id,
-            "photo_group_id": photo_group_id,
-            "previous_message_id": "",
-            "option_delete_previous": "",
-            "nextrun_ts": nextrun_ts,
-            "user_nextrun_ts": user_nextrun_ts,
-            "pending_ts": None,
-            "removed_ts": "",
-            "remarks": "",
-            "user_bot_token": user_bot_token,
-            "message_thread_id": message_thread_id,
-            "errors": errors,
-        }
-    )
+) -> Optional[InsertOneResult]:
+    result = None
+    try:
+        result = await db_service.insert_new_entry(
+            {
+                "created_by": user_id,
+                "last_updated_by": user_id,
+                "chat_id": chat_id,
+                "channel_id": channel_id,
+                "jobname": jobname,
+                "crontab": crontab,
+                "content": content,
+                "content_type": content_type,
+                "photo_id": photo_id,
+                "photo_group_id": photo_group_id,
+                "previous_message_id": "",
+                "option_delete_previous": "",
+                "nextrun_ts": nextrun_ts,
+                "user_nextrun_ts": user_nextrun_ts,
+                "pending_ts": None,
+                "removed_ts": "",
+                "remarks": "",
+                "user_bot_token": user_bot_token,
+                "message_thread_id": message_thread_id,
+                "errors": errors,
+            }
+        )
+        log.logger.info(f'[DB] Created new job, jobname="{jobname}", chat_id={chat_id}')
+    except PyMongoError as e:
+        log.logger.warning(e)
 
-    log.logger.info(f'[DB] Created new job, jobname="{jobname}", chat_id={chat_id}')
+    return result
 
 
 async def update_entry_by_jobname(
@@ -158,14 +165,16 @@ async def update_entry_by_jobid(
     entry_id: int,
     update: Optional[Any],
     include_removed: bool = False,
-) -> Any:
+) -> UpdateResult:
     q: Dict[str, Any] = {"_id": entry_id}
     if not include_removed:
         q["removed_ts"] = ""
     return await db_service.update_entry(q, update)
 
 
-async def remove_entries_by_chat(db_service: MongoService, chat_id: int) -> None:
+async def remove_entries_by_chat(
+    db_service: MongoService, chat_id: int
+) -> UpdateResult:
     q = {"chat_id": float(chat_id)}
     payload = {"removed_ts": utils.now()}
-    await db_service.update_multiple_entries(q, payload)
+    return await db_service.update_multiple_entries(q, payload)

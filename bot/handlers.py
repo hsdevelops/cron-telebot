@@ -1,140 +1,33 @@
-import aiohttp
-from telegram.ext._contexttypes import ContextTypes
-from typing import Dict
-
-from bot.actions import actions
-from bot.replies import replies
-from common import log
-from database import mongo
-from teleapi import endpoints as teleapi
 from telegram import Update
-from typing import Optional, Callable, Coroutine, Any, Optional
-from bot.convos import handlers as convo_handlers
+from telegram.ext._contexttypes import ContextTypes
+from bot import replies
+from common import log
 from bot import commands
 
 from telegram.ext import (
+    filters,
     CommandHandler,
     MessageHandler,
-    filters,
+    ConversationHandler,
     CallbackQueryHandler,
 )
-
-message_handler_map: Dict[
-    str, Callable[[Any, Any], Coroutine[Any, Any, Optional[Exception]]]
-] = {
-    replies.request_jobname_message: actions.add_new_job,
-    replies.request_text_message: actions.add_message,
-    replies.delete_message: actions.remove_job,
-    replies.start_message: actions.add_timezone,
-    replies.list_jobs_message: actions.show_job_details,
-    replies.checkcron_message: actions.decrypt_cron,
-    replies.request_jobs_message: actions.add_new_jobs,
-    replies.request_crontab_message: actions.update_crontab,
-    replies.invalid_crontab_message: actions.update_crontab,
-    replies.change_timezone_message: actions.update_timezone,
-}
-
-
-async def handle_messages(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> Optional[Exception]:
-    if update.message is None:
-        return
-
-    # job creation for channels
-    db_service: mongo.MongoService = context.application.bot_data["mongo"]
-    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
-
-    if update.message.forward_from_chat is not None:
-        return await actions.add_new_channel_job(update, db_service)
-
-    # job creation for groups/private chats
-    reply_to_message = update.message.reply_to_message
-    if reply_to_message is None:
-        return
-
-    text = reply_to_message.text_html
-    handler = message_handler_map.get(text, None)
-    if handler is None:
-        return
-
-    err = await handler(update, context)
-    if err is None:
-        await teleapi.delete_message(
-            http_session,
-            update.message.chat.id,
-            reply_to_message.message_id,
-        )
+from bot.convos import (
+    add,
+    addforwarded,
+    addmultiple,
+    changesender,
+    changetz,
+    checkcron,
+    convo,
+    delete,
+    edit,
+    list,
+    reset,
+    start,
+)
 
 
-async def handle_photos(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> Optional[Exception]:
-    if update.message is None:
-        return
-
-    # job creation for channels
-    db_service: mongo.MongoService = context.application.bot_data["mongo"]
-    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
-
-    if update.message.forward_from_chat is not None:
-        return await actions.add_new_channel_job(update, db_service)
-
-    reply_to_message = update.message.reply_to_message
-    if reply_to_message is None:
-        return
-
-    if reply_to_message.text_html == replies.request_text_message:
-        err = await actions.add_message(update, context, True)
-        if err is None:
-            await teleapi.delete_message(
-                http_session, update.message.chat.id, reply_to_message.message_id
-            )
-
-
-async def handle_polls(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> Optional[Exception]:
-    if update.message is None:
-        return
-
-    # job creation for channels
-    is_channel_job = update.message.forward_from_chat is not None
-    if update.message.poll.type == "quiz" and (
-        update.message.chat.type != "private" or is_channel_job
-    ):
-        return await replies.send_quiz_unavailable_message(update)
-
-    db_service: mongo.MongoService = context.application.bot_data["mongo"]
-    http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
-
-    if is_channel_job:
-        return await actions.add_new_channel_job(
-            update=update, db_service=db_service, poll=True
-        )
-
-    reply_to_message = update.message.reply_to_message
-    if reply_to_message is None:
-        return
-
-    if reply_to_message.text_html == replies.request_text_message:
-        err = await actions.add_message(
-            update=update, context=context, photo=False, poll=True
-        )
-        if err is None:
-            await teleapi.delete_message(
-                http_session, update.message.chat.id, reply_to_message.message_id
-            )
-
-
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    if query.data == "1":
-        await actions.reset_chat(update, context)
-    await context.bot.editMessageReplyMarkup(
-        chat_id=query.message.chat_id, message_id=query.message.message_id
-    )
-    await query.answer()
+text = filters.TEXT & ~filters.COMMAND
 
 
 async def handle_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -142,27 +35,131 @@ async def handle_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> No
     log.logger.error(f'[BOT] Update "{update}" caused error "{context.error}"')
 
 
+async def fallback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
+    await replies.text(update, replies.convo_ended_message)
+    return ConversationHandler.END
+
+
 bot_handlers = [
-    # conversations (must be declared first, not sure why)
-    convo_handlers.edit_handler,
-    convo_handlers.config_chat_handler,
+    # conversations
+    ConversationHandler(
+        entry_points=[CommandHandler("add", add.command)],
+        states={
+            convo.states.s0: [MessageHandler(text, add.add_jobname)],
+            convo.states.s1: [
+                MessageHandler(text, add.add_content),
+                MessageHandler(filters.PHOTO, add.add_content),
+                MessageHandler(filters.POLL, add.add_content),
+            ],
+            convo.states.s2: [
+                MessageHandler(text, add.add_crontab),
+                MessageHandler(filters.PHOTO, add.add_photo_group),
+            ],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("addmultiple", addmultiple.command)],
+        states={
+            convo.states.s0: [
+                MessageHandler(text, addmultiple.add_jobs),
+            ]
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("start", start.command)],
+        states={
+            convo.states.s0: [MessageHandler(text, start.add_timezone)],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("edit", edit.command)],
+        states={
+            convo.states.s0: [MessageHandler(text, edit.choose_job)],
+            convo.states.s1: [MessageHandler(text, edit.choose_attribute)],
+            convo.states.s2: [
+                MessageHandler(text, edit.handle_edit_content),
+                MessageHandler(filters.POLL, edit.handle_edit_poll),
+            ],
+            convo.states.s3: [MessageHandler(filters.PHOTO, edit.handle_add_photo)],
+            convo.states.s4: [MessageHandler(text, edit.handle_clear_photos)],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("changesender", changesender.command)],
+        states={
+            convo.states.s0: [MessageHandler(text, changesender.choose_chat)],
+            convo.states.s1: [MessageHandler(text, changesender.update_sender)],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("delete", delete.command)],
+        states={
+            convo.states.s0: [
+                MessageHandler(text, delete.remove_job),
+            ],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("list", list.command)],
+        states={
+            convo.states.s0: [
+                MessageHandler(text, list.show_job_details),
+            ]
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("checkcron", checkcron.command)],
+        states={
+            convo.states.s0: [
+                MessageHandler(text, checkcron.decrypt_cron),
+            ]
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("changetz", changetz.command)],
+        states={
+            convo.states.s0: [
+                MessageHandler(text, changetz.update_timezone),
+            ]
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    ConversationHandler(
+        entry_points=[CommandHandler("reset", reset.command)],
+        states={
+            convo.states.s0: [CallbackQueryHandler(reset.reset)],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
+    # this conversation handler must be placed last, otherwise it will conflict with the rest
+    ConversationHandler(
+        entry_points=[
+            MessageHandler(text, addforwarded.add_job),
+            MessageHandler(filters.PHOTO, addforwarded.add_job),
+            MessageHandler(filters.POLL, addforwarded.add_job),
+        ],
+        states={
+            convo.states.s0: [
+                MessageHandler(text, add.add_crontab),
+                MessageHandler(filters.PHOTO, add.add_photo_group),
+            ],
+        },
+        fallbacks=[MessageHandler(filters.COMMAND, fallback)],
+    ),
     # on different commands - answer in Telegram
-    CommandHandler("start", commands.start),
     CommandHandler("help", commands.help),
-    CommandHandler("add", commands.add),
-    CommandHandler("delete", commands.delete),
-    CommandHandler("list", commands.list_jobs),
-    CommandHandler("checkcron", commands.checkcron),
-    CommandHandler("options", commands.list_options),
+    CommandHandler(
+        "options", commands.list_options
+    ),  # TODO - make these three a convo too
     CommandHandler("adminsonly", commands.option_restrict_to_admins),
     CommandHandler("creatoronly", commands.option_restrict_to_user),
-    CommandHandler("changetz", commands.change_tz),
-    CommandHandler("reset", commands.reset),
-    CommandHandler("addmultiple", commands.add_multiple),
     # on noncommand i.e message
-    MessageHandler(filters.TEXT, handle_messages),
-    MessageHandler(filters.PHOTO, handle_photos),
-    MessageHandler(filters.POLL, handle_polls),
-    # on callback
-    CallbackQueryHandler(handle_callback),
 ]

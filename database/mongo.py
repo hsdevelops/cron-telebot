@@ -2,7 +2,7 @@ import config
 from common import utils
 from typing import Any, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
-from pymongo.results import UpdateResult
+from pymongo.results import UpdateResult, InsertOneResult
 
 
 class MongoService:
@@ -27,11 +27,11 @@ class MongoService:
     def disconnect(self) -> AsyncIOMotorCollection:
         self.client.close()
 
-    async def insert_new_entry(self, q: Optional[Any]) -> None:
+    async def insert_new_entry(self, q: Optional[Any]) -> InsertOneResult:
         now = utils.now()
         q["created_ts"] = now
         q["last_update_ts"] = now
-        await self.main_collection.insert_one(q)
+        return await self.main_collection.insert_one(q)
 
     async def find_entries(
         self, q: Optional[Any], sort: Optional[Any] = None
@@ -46,7 +46,7 @@ class MongoService:
 
     async def update_multiple_entries(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> Optional[Any]:
+    ) -> UpdateResult:
         q["removed_ts"] = ""
         update["last_update_ts"] = utils.now()
         return await self.main_collection.update_many(q, {"$set": update})
@@ -60,9 +60,9 @@ class MongoService:
     async def count_entries(self, q: Optional[Any]) -> int:
         return await self.main_collection.count_documents(q)
 
-    async def insert_new_chat(self, q: Optional[Any]) -> None:
+    async def insert_new_chat(self, q: Optional[Any]) -> InsertOneResult:
         q["updated_ts"] = utils.now()
-        await self.chat_data_collection.insert_one(q)
+        return await self.chat_data_collection.insert_one(q)
 
     async def find_one_chat_entry(self, q: Optional[Any]) -> Optional[Any]:
         return await self.chat_data_collection.find_one(q)
@@ -73,17 +73,17 @@ class MongoService:
 
     async def update_chat_entries(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> Optional[Any]:
+    ) -> UpdateResult:
         update["updated_ts"] = utils.now()
         return await self.chat_data_collection.update_many(q, {"$set": update})
 
     async def update_one_chat_entry(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> None:
+    ) -> UpdateResult:
         update["updated_ts"] = utils.now()
-        await self.chat_data_collection.update_one(q, {"$set": update})
+        return await self.chat_data_collection.update_one(q, {"$set": update})
 
-    async def insert_new_user(self, q: Optional[Any]) -> Optional[Any]:
+    async def insert_new_user(self, q: Optional[Any]) -> InsertOneResult:
         now = utils.now()
         q["created_at"] = now
         q["last_used_at"] = now
@@ -94,12 +94,12 @@ class MongoService:
 
     async def update_one_user(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> Optional[Any]:
+    ) -> UpdateResult:
         return await self.user_data_collection.update_one(q, {"$set": update})
 
     async def update_one_bot(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> Optional[Any]:
+    ) -> UpdateResult:
         update["updated_at"] = utils.now()
         return await self.bot_data_collection.update_one(
             q, {"$set": update}, upsert=True

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import aiohttp
 from fastapi import FastAPI
+from influxdb_client_3 import InfluxDBClient3
 import config
 from telegram.ext import Application
 from typing import AsyncGenerator
@@ -16,6 +17,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     http_session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30))
     app.state.http_session = http_session
+
+    app.state.influx = InfluxDBClient3(
+        host=config.INFLUXDB_HOST,
+        token=config.INFLUXDB_TOKEN,
+        org=config.INFLUXDB_ORG,
+        database=config.INFLUXDB_BUCKET,
+    )
 
     # https://github.com/python-telegram-bot/python-telegram-bot/wiki/Handling-network-errors
     ptb = (
@@ -60,3 +68,4 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         await ptb.shutdown()
         await http_session.close()
         db_service.disconnect()
+        app.state.influx.close()
