@@ -1,6 +1,7 @@
 from database.mongo import MongoService
 from common import log
 from typing import Dict, Any, Optional
+from pymongo.results import UpdateResult
 
 """
 Getters
@@ -19,8 +20,9 @@ Setters
 
 async def upsert_new_bot(
     db_service: MongoService, user_id: int, bot_data: Dict[str, Any]
-) -> None:
+) -> UpdateResult:
     q = {"id": bot_data["id"]}
     payload = {**bot_data}
-    await db_service.update_one_bot(q, payload)
+    res = await db_service.update_one_bot(q, payload)
     log.logger.info(f'[BOT] User "{user_id}" upserted bot "{bot_data.get("username")}"')
+    return res

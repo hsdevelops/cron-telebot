@@ -83,7 +83,7 @@ class MongoService:
         update["updated_ts"] = utils.now()
         return await self.chat_data_collection.update_one(q, {"$set": update})
 
-    async def insert_new_user(self, q: Optional[Any]) -> Optional[Any]:
+    async def insert_new_user(self, q: Optional[Any]) -> InsertOneResult:
         now = utils.now()
         q["created_at"] = now
         q["last_used_at"] = now
@@ -94,12 +94,12 @@ class MongoService:
 
     async def update_one_user(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> Optional[Any]:
+    ) -> UpdateResult:
         return await self.user_data_collection.update_one(q, {"$set": update})
 
     async def update_one_bot(
         self, q: Optional[Any], update: Optional[Any]
-    ) -> Optional[Any]:
+    ) -> UpdateResult:
         update["updated_at"] = utils.now()
         return await self.bot_data_collection.update_one(
             q, {"$set": update}, upsert=True

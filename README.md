@@ -5,7 +5,7 @@ Recurring Messages ([@cron_telebot](https://t.me/cron_telebot)) is a Telegram bo
 Refer to our [user guide](https://github.com/hsdevelops/cron-telebot/wiki/User-Guide) for usage instructions.
 
 ## Noteworthy files
-1. [poll.py](./poll.py) — telegram bot, to add/delete/view the recurring jobs
+1. [main.py](./main.py) — telegram bot, to add/delete/view the recurring jobs
 2. [api.py](./api.py) — fast api app, ping the endpoint to trigger check and send all required messages
 3. [config.py](./config.py) — all the configurations you need to change for the bot
 4. [mongo.py](./database/mongo.py) — handles interaction with the mongo database

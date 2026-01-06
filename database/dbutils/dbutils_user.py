@@ -4,10 +4,8 @@ from email import utils
 from common import log, utils
 from typing import Any, Optional
 
-
-MongoService = (
-    Any  # Placeholder for the actual MongoService class due to cyclic imports
-)
+from database.mongo import MongoService
+from pymongo.results import UpdateResult, InsertOneResult
 
 
 """
@@ -27,7 +25,7 @@ Setters
 
 async def add_user(
     db_service: MongoService, user_id: int, username: str, first_name: str
-) -> None:
+) -> InsertOneResult:
     new_doc = {
         "user_id": user_id,
         "username": username,
@@ -35,26 +33,28 @@ async def add_user(
         "superseded_at": "",
         "field_changed": "",
     }
-    await db_service.insert_new_user(new_doc)
+    res = await db_service.insert_new_user(new_doc)
     log.logger.info(f'[DB] Created new user, user_id={user_id}, username="{username}"')
+    return res
 
 
 async def supersede_user(
     db_service: MongoService, entry: Optional[Any], field_changed: Any
-) -> None:
+) -> UpdateResult:
     # update previous entry
     q = {"_id": entry["_id"]}
     payload = {"superseded_at": utils.now(), "field_changed": field_changed}
-    await db_service.update_one_user(q, payload)
+    res = await db_service.update_one_user(q, payload)
     log.logger.info(
         f'[DB] Superseded user, user_id={entry.get("user_id")}, field_changed="{entry.get("field_changed")}"'
     )
+    return res
 
 
-async def refresh_user(db_service: MongoService, entry: Optional[Any]) -> None:
+async def refresh_user(db_service: MongoService, entry: Optional[Any]) -> UpdateResult:
     q = {"_id": entry["_id"]}
     payload = {"last_used_at": utils.now()}
-    await db_service.update_one_user(q, payload)
+    return await db_service.update_one_user(q, payload)
 
 
 async def sync_user_data(db_service: MongoService, update: Update) -> None:
