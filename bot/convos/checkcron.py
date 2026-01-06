@@ -19,7 +19,9 @@ async def decrypt_cron(update: Update, _: ContextTypes) -> Optional[int]:
     try:
         description = get_description(update.message.text).lower()
     except Exception:  # crontab is not valid
-        await replies.text(update, replies.checkcron_invalid_message)
+        await replies.text(
+            update, replies.checkcron_invalid_message, reply_markup=replies.force_reply
+        )
         return None  # stay in current state
 
     await replies.text(update, replies.checkcron_meaning_message + description)

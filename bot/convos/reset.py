@@ -44,11 +44,11 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
     http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
-    user_id = update.message.from_user.id
-    payload = context.chat_data[user_id]
-
     query = update.callback_query
     chat_id = query.message.chat_id
+    user_id = query.from_user.id
+
+    payload = context.chat_data[user_id]
 
     if query.data == "1":
         res = await dbutils.remove_entries_by_chat(db_service, chat_id)

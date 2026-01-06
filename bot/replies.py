@@ -37,7 +37,7 @@ checkcron_meaning_message = "Ok, that means: "
 list_options_message_group = "<b>Group options</b>\n/adminsonly - restrict bot to group admins\n/creatoronly - restrict bot to first user\n\n"
 add_to_channel_message = "\n\nRemember to add RM bot into the channel as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>."
 change_timezone_message = "Please tell me your new UTC timezone.\n\nNote that this will change the timezone for all jobs set up in this chat."
-checkcron_invalid_message = "Alright, that is not a valid cron. Click <a href='https://crontab.guru/'>here</a> if you need help."  # html
+checkcron_invalid_message = "That is not a valid cron. Click <a href='https://crontab.guru/'>here</a> if you need help."  # html
 reset_confirmation_message = (
     "This will delete all the recurring message set up in this chat. Confirm?"
 )
@@ -92,6 +92,7 @@ convo_unauthorized_message = (
 no_photos_to_delete_error_message = "No photos to delete. Ending conversation..."
 attribute_change_error_message = "Something went wrong on the server... Please contact the bot owner at hs.develops.1@gmail.com."
 private_only_error_message = "This command can only be run in private chat with %s"
+group_only_error_message = "This command can only be run in groups"
 missing_chats_error_message = "Please add and set up %s in a group"
 missing_bot_in_group_message = "Terminating conversation... \n\nPlease add bot into the group as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>\nbefore running /changesender."
 missing_job_error_message = 'You do not have a job named "%s". You may only /list and /delete jobs that are active.'

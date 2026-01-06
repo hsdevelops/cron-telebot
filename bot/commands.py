@@ -17,6 +17,8 @@ async def list_options(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     is_group = update.message.chat.type in ["group", "supergroup"]
     if is_group:
         await replies.text(update, replies.list_options_message_group)
+        return
+    await replies.text(update, replies.group_only_error_message)
 
 
 async def option_restrict_to_admins(

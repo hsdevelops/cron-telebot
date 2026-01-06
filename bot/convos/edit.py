@@ -168,7 +168,11 @@ async def handle_edit_content(
         crontab = update.message.text
         _, payload, err = await prepare_crontab_update(update, crontab, db_service)
         if err is not None:
-            await replies.text(update, replies.invalid_crontab_message)
+            await replies.text(
+                update,
+                replies.invalid_crontab_message,
+                reply_markup=replies.force_reply,
+            )
             return convo.states.s2
         mongo_key = "crontab"
 

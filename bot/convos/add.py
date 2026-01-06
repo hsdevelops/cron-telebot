@@ -164,7 +164,9 @@ async def add_crontab(
         log.logger.info(
             f"[BOT] Invalid crontab received, crontab = {crontab}, err = {e}"
         )
-        await replies.text(update, replies.invalid_crontab_message)
+        await replies.text(
+            update, replies.invalid_crontab_message, reply_markup=replies.force_reply
+        )
         return None
 
     # update db entry
