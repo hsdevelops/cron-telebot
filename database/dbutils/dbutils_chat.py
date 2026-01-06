@@ -3,6 +3,8 @@ from database.mongo import MongoService
 from typing import Any, Optional
 from datetime import datetime
 from telegram import Update
+from pymongo.errors import PyMongoError
+from pymongo.results import UpdateResult, InsertOneResult
 
 """
 Getters
@@ -49,7 +51,8 @@ async def add_chat_data(
     utc_tz: str,
     created_by: int,
     telegram_ts: datetime,
-) -> None:
+) -> InsertOneResult:
+
     new_doc = {
         "chat_id": chat_id,
         "chat_title": chat_title,
@@ -61,10 +64,15 @@ async def add_chat_data(
         "restriction": "",
         "user_bot_token": None,
     }
-    await db_service.insert_new_chat(new_doc)
-    log.logger.info(
-        f"[DB] Created new chat entry, chat_id={chat_id}, chat_title={chat_title}"
-    )
+    result = None
+    try:
+        result = await db_service.insert_new_chat(new_doc)
+        log.logger.info(
+            f"[DB] Created new chat entry, chat_id={chat_id}, chat_title={chat_title}"
+        )
+    except PyMongoError as e:
+        log.logger.warning(e)
+    return result
 
 
 async def update_chats_tz_by_type(
@@ -73,7 +81,7 @@ async def update_chats_tz_by_type(
     tz_offset: float,
     chat_type: str,
     utc_tz: str = "",
-) -> None:
+) -> UpdateResult:
     payload = {"tz_offset": tz_offset, "utc_tz": utc_tz, "updated_ts": utils.now()}
     q = {"created_by": user_id, "chat_type": chat_type}
     mongo_response = await db_service.update_chat_entries(q, payload)
@@ -81,6 +89,7 @@ async def update_chats_tz_by_type(
     log.logger.info(
         f"[DB] Bulk updated timezone for {modified_count} chats, chat_type={chat_type}, user_id={user_id}, new tz_offset={tz_offset}"
     )
+    return mongo_response
 
 
 async def update_chat_entry(
@@ -88,9 +97,10 @@ async def update_chat_entry(
     chat_id: int,
     update: Update,
     updated_field: str = "restriction",
-) -> None:
+) -> UpdateResult:
     q = {"chat_id": chat_id}
-    await db_service.update_one_chat_entry(q, update)
+    res = await db_service.update_one_chat_entry(q, update)
     log.logger.info(
         f'[DB] Updated chat {updated_field} to "{update[updated_field]}", chat_id={chat_id}'
     )
+    return res

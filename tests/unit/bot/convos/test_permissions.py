@@ -1,9 +1,7 @@
-import asyncio
 from unittest import mock
 import pytest
 from telegram import CallbackQuery, Chat, Poll, User, Message, Update
-from bot.actions.actions import *
-from bot.actions.permissions import *
+from bot.convos.permissions import *
 from tests.unit.conftest import mock_update
 
 
@@ -61,18 +59,18 @@ async def test_get_chat_id(update_fix, context_fix, exp_chat_id, request):
 
 
 @pytest.mark.asyncio
-@mock.patch("bot.replies.replies.send_start_message")
-@mock.patch("bot.actions.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+@mock.patch("bot.replies.text")
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
 async def test_check_rights_missing_entry(
     send_msg, simple_update, simple_context, mongo_service
 ):
     await check_rights(simple_update, simple_context, mongo_service)
-    res = send_msg.assert_called_once()
+    res = send_msg.assert_called_once_with(simple_update, replies.prompt_start_message)
     assert res is None
 
 
 @pytest.mark.asyncio
-@mock.patch("bot.actions.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
 async def test_check_rights_no_retrictions(
     simple_update, simple_context, mongo_service, mock_group
 ):
@@ -82,8 +80,8 @@ async def test_check_rights_no_retrictions(
 
 
 @pytest.mark.asyncio
-@mock.patch("bot.replies.replies.send_user_unauthorized_error_message")
-@mock.patch("bot.actions.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+@mock.patch("bot.replies.text")
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
 async def test_check_rights_creator(
     send_401, simple_update, simple_context, mongo_service, mock_group
 ):
@@ -95,7 +93,10 @@ async def test_check_rights_creator(
 
     res = await check_rights(mock_update(id=2), simple_context, mongo_service)
     assert res is False
-    send_401.assert_called_once()
+    send_401.assert_called_once_with(
+        mock_update(id=2),
+        replies.user_unauthorized_error_message % "the current bot user",
+    )
 
 
 @pytest.mark.asyncio
@@ -107,8 +108,8 @@ async def test_check_rights_creator(
         ("", False),
     ],
 )
-@mock.patch("bot.replies.replies.send_user_unauthorized_error_message")
-@mock.patch("bot.actions.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+@mock.patch("bot.replies.text")
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
 async def test_check_rights_admin(
     send_401, restriction, exp, simple_update, simple_context, mongo_service, mock_group
 ):
@@ -121,4 +122,6 @@ async def test_check_rights_admin(
     assert res is exp
 
     if res is False:
-        send_401.assert_called_once()
+        send_401.assert_called_once_with(
+            simple_update, replies.user_unauthorized_error_message % "group admins"
+        )

@@ -77,6 +77,8 @@ def simple_context(mongo_service):
 
     context.bot_data = {}
     context.user_data = {}
+    context.chat_data = {}
+
     context.bot.get_chat_member = mock.AsyncMock()
 
     yield context

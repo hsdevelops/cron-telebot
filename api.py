@@ -110,20 +110,21 @@ async def process_job(
     now = utils.now()
 
     job_id = entry["_id"]
-    channel_id = entry.get("channel_id", "")
-    chat_id = entry.get("chat_id", "")
-    if channel_id != "":
+    channel_id = entry.get("channel_id") or ""
+    chat_id = entry.get("chat_id") or ""
+    if channel_id is not None and channel_id != "":
         chat_id = channel_id
-    content = entry.get("content", "")
-    content_type = entry.get("content_type", "")
-    photo_id = entry.get("photo_id", "")
-    photo_group_id = str(entry.get("photo_group_id", ""))
-    crontab = entry.get("crontab", "")
-    previous_message_id = str(entry.get("previous_message_id", ""))
+    content = entry.get("content") or ""
+    content_type = entry.get("content_type") or ""
+    photo_id = entry.get("photo_id") or ""
+    photo_group_id = str(entry.get("photo_group_id") or "")
+    crontab = entry.get("crontab") or ""
+    previous_message_id = str(entry.get("previous_message_id") or "")
     message_thread_id = entry.get("message_thread_id", None)
-    db_nextrun_ts = entry.get("nextrun_ts", "")
-    user_nextrun_ts = entry.get("user_nextrun_ts", "")
+    db_nextrun_ts = entry.get("nextrun_ts") or ""
+    user_nextrun_ts = entry.get("user_nextrun_ts") or ""
     errors = entry.get("errors", [])
+    option_delete_previous = entry.get("option_delete_previous") or ""
 
     user_bot_token = entry.get("user_bot_token")
     if user_bot_token is None:
@@ -155,7 +156,7 @@ async def process_job(
     errors = [*errors, {"error": err, "timestamp": now}]
 
     if err is None:
-        if entry.get("option_delete_previous", "") != "" and previous_message_id != "":
+        if option_delete_previous != "" and previous_message_id != "":
             await teleapi.delete_message(
                 http_session, chat_id, previous_message_id, user_bot_token
             )
@@ -229,7 +230,7 @@ async def send_message(
         msg_ids = [str(message["message_id"]) for message in json.get("result", [])]
         return ";".join(msg_ids), None
 
-    message_id = json.get("result", {}).get("message_id", "")
+    message_id = json.get("result", {}).get("message_id") or ""
     return message_id, None
 
 

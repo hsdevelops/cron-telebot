@@ -2,7 +2,9 @@ import aiohttp
 from telegram.ext import ConversationHandler
 from telegram.ext._contexttypes import ContextTypes
 from telegram import Update
-from bot.replies import replies
+from bot.convos import convo
+from bot import replies
+from config import BOT_NAME
 from database import mongo
 from database.dbutils import dbutils
 from common import log, utils
@@ -10,7 +12,30 @@ import teleapi.endpoints as teleapi
 from typing import Any, Optional
 
 
-state0, state1 = range(2)
+async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+    """Send a message when the command /changesender is issued."""
+
+    db_service: mongo.MongoService = context.application.bot_data["mongo"]
+
+    # find groups/private/channel created by user
+    user_id = update.message.from_user.id
+    chat_type = update.message.chat.type
+
+    if chat_type != "private":
+        await replies.text(update, replies.private_only_error_message % BOT_NAME)
+        return ConversationHandler.END
+
+    chat_entries = await dbutils.find_groups_created_by(db_service, user_id)
+    if len(chat_entries) <= 0:
+        await replies.text(update, replies.missing_chats_error_message % BOT_NAME)
+        return ConversationHandler.END
+
+    await replies.text(
+        update,
+        replies.choose_chat_message,
+        reply_markup=replies.keyboard_from_dict(chat_entries, "chat_title"),
+    )
+    return convo.states.s0
 
 
 # state 0
@@ -23,24 +48,24 @@ async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     chat_entry = await dbutils.find_chat_by_title(db_service, user_id, chat_title)
 
     if chat_entry is None:
-        await replies.send_error_message(update)
-        return state0
+        await replies.text(update, replies.error_message)
+        return convo.states.s0
 
     prev_token = chat_entry.get("user_bot_token")
     if prev_token is None:
         context.user_data["chat_id"] = chat_entry["chat_id"]
         context.user_data["chat_title"] = chat_entry["chat_title"]
-        await replies.send_prompt_user_bot_message(update)
-        return state1
+        await replies.text(update, replies.prompt_user_bot_message)
+        return convo.states.s1
 
     # Revert back to default — both chat and jobs
     has_err = await reset_sender(
         db_service, http_session, chat_entry["chat_id"], user_id, None, prev_token
     )
     if has_err:
-        await replies.send_missing_bot_in_group_message(update)
+        await replies.text(update, replies.missing_bot_in_group_message)
         return ConversationHandler.END
-    await replies.send_sender_reset_success_message(update)
+    await replies.text(update, replies.sender_reset_success_message)
     return ConversationHandler.END
 
 
@@ -55,8 +80,8 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     # check if bot exists
     resp = await teleapi.get_bot_details(http_session, new_token)
     if resp.get("status") != 200:
-        await replies.send_error_message(update)
-        return state1
+        await replies.text(update, replies.error_message)
+        return convo.states.s1
 
     bot_data = {
         **resp.get("json")["result"],
@@ -71,12 +96,15 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         db_service, http_session, chat_id, user_id, new_token, None
     )
     if has_err:
-        await replies.send_missing_bot_in_group_message(update)
+        await replies.text(update, replies.missing_bot_in_group_message)
         return ConversationHandler.END
 
-    await replies.send_sender_change_success_message(
-        update, chat_title, bot_data["username"]
+    reply = replies.sender_change_success_message % (
+        chat_title,
+        bot_data["username"],
+        bot_data["username"],
     )
+    await replies.text(update, reply)
     return ConversationHandler.END
 
 
@@ -94,7 +122,13 @@ async def reset_sender(
     )
     for entry in single_photo_entries:
         resp, new_photo_id = await teleapi.transfer_photo_between_bots(
-            http_session, db_service, new_token, prev_token, chat_id, entry
+            http_session,
+            db_service,
+            new_token,
+            prev_token,
+            chat_id,
+            entry["photo_id"],
+            entry["_id"],
         )
         status = resp.get("status")
         if status != 200:

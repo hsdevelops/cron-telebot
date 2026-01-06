@@ -1,8 +1,9 @@
-import asyncio
 from unittest import mock
 
 import pytest
-from bot.actions.actions import update_timezone
+from bot import replies
+from bot.convos.changetz import command, update_timezone
+from telegram.ext import ConversationHandler
 
 
 @pytest.fixture
@@ -34,78 +35,76 @@ def mock_job2():
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo_service")
+@mock.patch("bot.replies.text")
+async def test_update_tz_missing_chat(send_msg, simple_update, simple_context):
+    res = await command(simple_update, simple_context)
+    send_msg.assert_called_once_with(simple_update, replies.prompt_start_message)
+    assert res == ConversationHandler.END
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("mongo_service")
 @mock.patch("telegram.Message.reply_text")
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=False)
-)
+@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=False))
 async def test_update_tz_unauthorized(reply, simple_update, simple_context):
-    await update_timezone(simple_update, simple_context)
+    res = await update_timezone(simple_update, simple_context)
     reply.assert_not_called()
+    assert res == ConversationHandler.END
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo_service")
-@mock.patch("bot.replies.replies.send_error_message")
+@mock.patch("bot.replies.text")
 @mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=False))
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
-)
+@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_missing_tz(send_msg, simple_update, simple_context):
-    await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once()
+    res = await update_timezone(simple_update, simple_context)
+    send_msg.assert_called_once_with(
+        simple_update, replies.error_message, reply_markup=replies.force_reply
+    )
+    assert res == ConversationHandler.END
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo_service")
-@mock.patch("bot.replies.replies.send_error_message")
+@mock.patch("bot.replies.text")
 @mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+16:00", 16)))
 @mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
-)
+@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_invalid_tz(send_msg, simple_update, simple_context):
-    await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once()
+    res = await update_timezone(simple_update, simple_context)
+    send_msg.assert_called_once_with(simple_update, replies.error_message)
+    assert res == ConversationHandler.END
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("mongo_service")
-@mock.patch("bot.replies.replies.send_start_message")
+@mock.patch("bot.replies.text")
 @mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+8:00", 8)))
 @mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
-)
-async def test_update_tz_missing_chat(send_msg, simple_update, simple_context):
-    await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once()
-
-
-@pytest.mark.asyncio
-@mock.patch("bot.replies.replies.send_timezone_nochange_error_message")
-@mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+8:00", 8)))
-@mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
-)
+@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_no_change(
     send_msg, simple_update, simple_context, mongo_service, mock_group
 ):
+
+    user_id = simple_update.message.from_user.id
+    simple_context.chat_data[user_id] = {"tz_offset": 8}  # from previous state
+
     await mongo_service.insert_new_chat(mock_group)
-    await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once()
+    res = await update_timezone(simple_update, simple_context)
+    send_msg.assert_called_once_with(
+        simple_update, replies.timezone_nochange_error_message
+    )
+    assert res == ConversationHandler.END
 
 
 @pytest.mark.asyncio
 @mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+9:00", 9)))
 @mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
-)
+@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_group(
     mocker, simple_update, simple_context, mongo_service, mock_group, mock_job
 ):
-    send_msg = mocker.patch("bot.replies.replies.send_timezone_change_success_message")
+    send_msg = mocker.patch("bot.replies.text")
 
     mock_resp = ("2023-05-07 01:00", "2023-05-07 02:00")
     test_user_nextrun, test_nextrun = mock_resp
@@ -114,8 +113,14 @@ async def test_update_tz_group(
     await mongo_service.insert_new_chat(mock_group)
     await mongo_service.insert_new_entry(mock_job)
 
-    await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once()
+    user_id = simple_update.message.from_user.id
+    simple_context.chat_data[user_id] = {"tz_offset": 8}  # from previous state
+
+    res = await update_timezone(simple_update, simple_context)
+    send_msg.assert_called_once_with(
+        simple_update, "Yipee! Your timezone has been updated to UTC+9:00."
+    )
+    assert res == ConversationHandler.END
 
     res_group = await mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res_group is not None
@@ -131,9 +136,7 @@ async def test_update_tz_group(
 @pytest.mark.asyncio
 @mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+9:00", 9)))
 @mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
-@mock.patch(
-    "bot.actions.actions.permissions.check_rights", mock.AsyncMock(return_value=True)
-)
+@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_private(
     mocker,
     simple_update,
@@ -144,7 +147,10 @@ async def test_update_tz_private(
     mock_job,
     mock_job2,
 ):
-    send_msg = mocker.patch("bot.replies.replies.send_timezone_change_success_message")
+    send_msg = mocker.patch("bot.replies.text")
+
+    user_id = simple_update.message.from_user.id
+    simple_context.chat_data[user_id] = {"tz_offset": 8}  # from previous state
 
     mock_resp = ("2023-05-07 01:00", "2023-05-07 02:00")
     test_user_nextrun, test_nextrun = mock_resp
@@ -155,8 +161,11 @@ async def test_update_tz_private(
     await mongo_service.insert_new_entry(mock_job)
     await mongo_service.insert_new_entry(mock_job2)
 
-    await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once()
+    res = await update_timezone(simple_update, simple_context)
+    assert res == ConversationHandler.END
+    send_msg.assert_called_once_with(
+        simple_update, "Yipee! Your timezone has been updated to UTC+9:00."
+    )
 
     res_private = await mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res_private is not None

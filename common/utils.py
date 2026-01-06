@@ -20,7 +20,7 @@ def calc_next_run(crontab: str, user_tz_offset: float) -> Tuple[str, str]:
 
 
 def extract_tz_values(text: str) -> Optional[re.Match[str]]:
-    return re.match("^(?:UTC)?(([+-])(1[0-4]|0[0-9]|[0-9])(?::([0-5][0-9]))?)$", text)
+    return re.match("^(?:UTC)?(([+-])?(1[0-4]|0[0-9]|[0-9])(?::([0-5][0-9]))?)$", text)
 
 
 def extract_jobs(text: str) -> List[Tuple[str, str]]:
@@ -38,8 +38,11 @@ def extract_jobs(text: str) -> List[Tuple[str, str]]:
 
 def calc_tz(tz_values: re.Match) -> Tuple[str, float]:
     match_groups = tz_values.groups()
-    utc_tz = str(match_groups[0])
-    sign = match_groups[1]
+    utc_tz, sign = match_groups[0], match_groups[1]
+    if sign is None:
+        utc_tz = f"+{utc_tz}"
+        sign = "+"
+    utc_tz = str(utc_tz)
     hour = int(match_groups[2])
     mins = 0 if match_groups[3] is None else int(match_groups[3])
 
