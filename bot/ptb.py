@@ -68,3 +68,4 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         await ptb.shutdown()
         await http_session.close()
         db_service.disconnect()
+        app.state.influx.close()
