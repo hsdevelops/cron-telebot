@@ -165,7 +165,7 @@ async def update_entry_by_jobid(
     entry_id: int,
     update: Optional[Any],
     include_removed: bool = False,
-) -> Any:
+) -> UpdateResult:
     q: Dict[str, Any] = {"_id": entry_id}
     if not include_removed:
         q["removed_ts"] = ""
