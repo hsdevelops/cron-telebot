@@ -32,7 +32,7 @@ text = filters.TEXT & ~filters.COMMAND
 
 async def handle_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
-    log.logger.error(f'[BOT] Update "{update}" caused error "{context.error}"')
+    log.logger.error(f'[BOT] "{context.error}", update= "{update}"', exc_info=True)
 
 
 async def fallback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
@@ -142,9 +142,9 @@ bot_handlers = [
     # this conversation handler must be placed last, otherwise it will conflict with the rest
     ConversationHandler(
         entry_points=[
-            MessageHandler(text, addforwarded.add_job),
-            MessageHandler(filters.PHOTO, addforwarded.add_job),
-            MessageHandler(filters.POLL, addforwarded.add_job),
+            MessageHandler(text & filters.FORWARDED, addforwarded.add_job),
+            MessageHandler(filters.PHOTO & filters.FORWARDED, addforwarded.add_job),
+            MessageHandler(filters.POLL & filters.FORWARDED, addforwarded.add_job),
         ],
         states={
             convo.states.s0: [

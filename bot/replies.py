@@ -11,6 +11,7 @@ from telegram import (
     InlineKeyboardMarkup,
 )
 from bot.convos import edit
+from common import log
 from common.enums import ContentType
 from typing import Any, Dict, List, Optional, Sequence, Union
 from telegram import KeyboardButton
@@ -194,10 +195,14 @@ async def text(
     parse_mode=ParseMode.HTML,
     disable_web_page_preview=True,
     reply_markup=ReplyKeyboardRemove(),
-) -> Message:
-    return await update.message.reply_text(
-        msg,
-        parse_mode=parse_mode,
-        reply_markup=reply_markup,
-        disable_web_page_preview=disable_web_page_preview,
-    )
+) -> Optional[Message]:
+    try:
+        return await update.message.reply_text(
+            msg,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
+            disable_web_page_preview=disable_web_page_preview,
+        )
+    except Exception as e:
+        log.logger.error(f"[BOT] Failed to send text reply: {e}", exc_info=True)
+        return None

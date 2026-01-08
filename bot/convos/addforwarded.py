@@ -25,14 +25,13 @@ async def add_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
     if forwarded_chat_info is None:
         return ConversationHandler.END
 
+    # channel jobs can only be set up from private chats
+    if update.message.chat.type != "private":
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     chat_id = update.message.chat.id
-
-    # channel jobs can only be set up from private chats
-    if update.message.chat.type != "private":
-        await replies.text(update, replies.private_only_error_message % BOT_NAME)
-        return ConversationHandler.END
 
     # timezone must be defined in order to create new job
     chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id)

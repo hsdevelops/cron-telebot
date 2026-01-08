@@ -40,7 +40,8 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
 
     entries = await dbutils.find_entries_by_chatid(db_service, update.message.chat.id)
     if len(entries) <= 0:
-        return await replies.text(update, replies.simple_prompt_message)
+        await replies.text(update, replies.simple_prompt_message)
+        return ConversationHandler.END
 
     await replies.text(
         update,
