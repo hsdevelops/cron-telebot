@@ -81,6 +81,9 @@ wrong_restrction_error_message = (
 )
 invalid_timezone_message = "That's not a valid timezone. Examples of valid timezones are UTC, UTC+08:30, +08:30, Asia/Singapore, Europe/London etc."
 invalid_new_job_message = "A job with this name already exists. Please /add and create a new job, or /edit this job."
+invalid_new_jobname_message = (
+    "A job with this name already exists. Please choose a different name."
+)
 quiz_unavailable_message = 'Recurring messages unfortunately cannot support recurring quizzes in channels and groups... because Telegram does not return the correct option id for forwarded messages (◕︵◕) (<a href="https://docs.python-telegram-bot.org/en/v12.5.1/telegram.poll.html#telegram.Poll.correct_option_id">see docs</a>)'
 type_unavailable_message = (
     "Recurring messages unfortunately does not support messages of this type."

@@ -12,6 +12,7 @@ from cron_descriptor import get_description
 from typing import Dict, Tuple, Optional, Any
 
 attr_cron = "crontab"
+attr_jobname = "job name"
 attr_content = "text content"
 attr_add_photo = "add photo"
 attr_del_photo = "remove all photos"
@@ -20,6 +21,7 @@ attr_pause_job = "pause/resume job"
 
 attrs = [
     attr_cron,
+    attr_jobname,
     attr_content,
     attr_add_photo,
     attr_del_photo,
@@ -190,6 +192,23 @@ async def handle_edit_content(
             "last_updated_by": update.message.from_user.id,
             "content": update.message.text_html,
             "content_type": content_type,
+        }
+
+    if attr == attr_jobname:
+        new_jobname = update.message.text.strip()
+        if new_jobname != jobname and await dbutils.entry_exists(
+            db_service, chat_id, new_jobname
+        ):
+            await replies.text(
+                update,
+                replies.invalid_new_jobname_message,
+                reply_markup=replies.force_reply,
+            )
+            return convo.states.s2
+        mongo_key = "jobname"
+        payload = {
+            "last_updated_by": update.message.from_user.id,
+            "jobname": new_jobname,
         }
 
     await dbutils.update_entry_by_jobid(db_service, entry["_id"], payload)
