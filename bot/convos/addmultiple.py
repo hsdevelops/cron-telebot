@@ -49,11 +49,14 @@ async def add_jobs(
         return ConversationHandler.END
 
     successful_creation = []
+    user_timezone = chat_entry.get("utc_tz")
     user_tz_offset = chat_entry.get("tz_offset")
     for crontab, text_content in res:
         # arrange next run date and time
         try:
-            user_nextrun, db_nextrun = utils.calc_next_run(crontab, user_tz_offset)
+            user_nextrun, db_nextrun = utils.calc_next_run(
+                crontab, user_timezone, user_tz_offset
+            )
         except Exception:
             continue
 

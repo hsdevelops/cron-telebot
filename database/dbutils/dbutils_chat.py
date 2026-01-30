@@ -80,7 +80,7 @@ async def update_chats_tz_by_type(
     user_id: int,
     tz_offset: float,
     chat_type: str,
-    utc_tz: str = "",
+    utc_tz: str,
 ) -> UpdateResult:
     payload = {"tz_offset": tz_offset, "utc_tz": utc_tz, "updated_ts": utils.now()}
     q = {"created_by": user_id, "chat_type": chat_type}

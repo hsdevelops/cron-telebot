@@ -55,51 +55,34 @@ async def test_update_tz_unauthorized(reply, simple_update, simple_context):
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo_service")
 @mock.patch("bot.replies.text")
-@mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=False))
+@mock.patch(
+    "common.utils.extract_timezone", mock.MagicMock(return_value=("", 0, "some error"))
+)
 @mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_missing_tz(send_msg, simple_update, simple_context):
     res = await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once_with(
-        simple_update, replies.error_message, reply_markup=replies.force_reply
-    )
+    send_msg.assert_called_once_with(simple_update, replies.invalid_timezone_message)
     assert res == ConversationHandler.END
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("mongo_service")
 @mock.patch("bot.replies.text")
-@mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+16:00", 16)))
-@mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
+@mock.patch(
+    "common.utils.extract_timezone",
+    mock.MagicMock(return_value=("UTC", 16, "invalid offset 16")),
+)
 @mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_invalid_tz(send_msg, simple_update, simple_context):
     res = await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once_with(simple_update, replies.error_message)
+    send_msg.assert_called_once_with(simple_update, replies.invalid_timezone_message)
     assert res == ConversationHandler.END
 
 
 @pytest.mark.asyncio
-@mock.patch("bot.replies.text")
-@mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+8:00", 8)))
-@mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
-@mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
-async def test_update_tz_no_change(
-    send_msg, simple_update, simple_context, mongo_service, mock_group
-):
-
-    user_id = simple_update.message.from_user.id
-    simple_context.chat_data[user_id] = {"tz_offset": 8}  # from previous state
-
-    await mongo_service.insert_new_chat(mock_group)
-    res = await update_timezone(simple_update, simple_context)
-    send_msg.assert_called_once_with(
-        simple_update, replies.timezone_nochange_error_message
-    )
-    assert res == ConversationHandler.END
-
-
-@pytest.mark.asyncio
-@mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+9:00", 9)))
-@mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
+@mock.patch(
+    "common.utils.extract_timezone", mock.MagicMock(return_value=("UTC", 9, None))
+)
 @mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_group(
     mocker, simple_update, simple_context, mongo_service, mock_group, mock_job
@@ -118,13 +101,13 @@ async def test_update_tz_group(
 
     res = await update_timezone(simple_update, simple_context)
     send_msg.assert_called_once_with(
-        simple_update, "Yipee! Your timezone has been updated to UTC+9:00."
+        simple_update, "Yipee! Your timezone has been updated to UTC+09:00."
     )
     assert res == ConversationHandler.END
 
     res_group = await mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res_group is not None
-    assert res_group["utc_tz"] == "+9:00"
+    assert res_group["utc_tz"] == "UTC"
     assert res_group["tz_offset"] == 9
 
     res_jobs = await mongo_service.find_entries({"created_by": 1})
@@ -134,8 +117,9 @@ async def test_update_tz_group(
 
 
 @pytest.mark.asyncio
-@mock.patch("common.utils.calc_tz", mock.MagicMock(return_value=("+9:00", 9)))
-@mock.patch("common.utils.extract_tz_values", mock.MagicMock(return_value=True))
+@mock.patch(
+    "common.utils.extract_timezone", mock.MagicMock(return_value=("UTC", 9, None))
+)
 @mock.patch("bot.convos.permissions.check_rights", mock.AsyncMock(return_value=True))
 async def test_update_tz_private(
     mocker,
@@ -164,17 +148,17 @@ async def test_update_tz_private(
     res = await update_timezone(simple_update, simple_context)
     assert res == ConversationHandler.END
     send_msg.assert_called_once_with(
-        simple_update, "Yipee! Your timezone has been updated to UTC+9:00."
+        simple_update, "Yipee! Your timezone has been updated to UTC+09:00."
     )
 
     res_private = await mongo_service.find_one_chat_entry({"chat_id": 1})
     assert res_private is not None
-    assert res_private["utc_tz"] == "+9:00"
+    assert res_private["utc_tz"] == "UTC"
     assert res_private["tz_offset"] == 9
 
     res_channel = await mongo_service.find_one_chat_entry({"chat_id": 2})
     assert res_channel is not None
-    assert res_channel["utc_tz"] == ""
+    assert res_channel["utc_tz"] == "UTC"
     assert res_channel["tz_offset"] == 9
 
     res_jobs = await mongo_service.find_entries({"created_by": 1})

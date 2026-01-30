@@ -49,7 +49,7 @@ async def add_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
             chat_title=forwarded_chat_info.title,
             chat_type=forwarded_chat_info.type,
             tz_offset=chat_entry.get("tz_offset"),
-            utc_tz="",
+            utc_tz=chat_entry.get("utc_tz"),
             created_by=user_id,
             telegram_ts=update.message.date,
         )
@@ -71,6 +71,7 @@ async def add_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
         "user_id": user_id,
         "user_bot_token": chat_entry.get("user_bot_token"),  # TODO - check which
         "tz_offset": chat_entry.get("tz_offset"),
+        "utc_tz": chat_entry.get("utc_tz"),
         "channel_id": forwarded_chat_info.id,
     }
 

@@ -15,13 +15,12 @@ from common import log
 from common.enums import ContentType
 from typing import Any, Dict, List, Optional, Sequence, Union
 from telegram import KeyboardButton
-from telegram.ext._contexttypes import ContextTypes
 from config import JOB_LIMIT_PER_PERSON
 from telegram.constants import ParseMode
 
 # custom messages
 prompt_start_message = "Your chat has not been set up yet. Please /start to set up the chat with @cron_telebot."
-start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone. For example, if your timezone is UTC+08:30, enter +08:30."
+start_message = "<b>Thank you for using Recurring Messages!</b>\n\nTo start, please tell me your UTC timezone e.g. UTC, UTC+08:30, +08:30, Asia/Singapore, Europe/London."
 help_message = 'I can help you schedule recurring messages using <a href="https://crontab.guru/">cron schedule expressions</a> (min. 1 minute intervals).\n\n<b>Available commands</b>\n/add - add a new job\n/addmultiple - add multiple jobs\n/edit - edit job details\n/list - list active jobs\n/delete - delete a job\n/reset - delete all jobs\n/changetz - edit timezone\n/changesender - change sender for group\n/options - edit permissions for group\n/checkcron - check the validity/meaning of a cron expression\n\n<b>Feeling lost?</b>\nRefer to our <a href="https://github.com/hsdevelops/cron-telebot/wiki/User-Guide">user guide</a> for more usage instructions.\n\n<b>Found a bug?</b>\nPlease contact the bot owner at <a href="mailto:hs.develops.1@gmail.com">hs.develops.1@gmail.com</a>.\n\n<b>Enjoying the bot?</b>\nYou can <a href="https://www.buymeacoffee.com/hschua">buy the creator a coffee</a>!'  # html
 delete_message = (
     "Hey, tell me the name of the job you want to delete. Get /list of available jobs."
@@ -37,7 +36,7 @@ checkcron_message = "Hey, send me your cron expression, I will decrypt it for yo
 checkcron_meaning_message = "Ok, that means: "
 list_options_message_group = "<b>Group options</b>\n/adminsonly - restrict bot to group admins\n/creatoronly - restrict bot to first user\n\n"
 add_to_channel_message = "\n\nRemember to add RM bot into the channel as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>."
-change_timezone_message = "Please tell me your new UTC timezone.\n\nNote that this will change the timezone for all jobs set up in this chat."
+change_timezone_message = "Please tell me your new UTC timezone e.g. UTC, UTC+08:30, +08:30, Asia/Singapore, Europe/London.\n\nNote that this will change the timezone for all jobs set up in this chat."
 checkcron_invalid_message = "That is not a valid cron. Click <a href='https://crontab.guru/'>here</a> if you need help."  # html
 reset_confirmation_message = (
     "This will delete all the recurring message set up in this chat. Confirm?"
@@ -60,7 +59,7 @@ reset_photos_confirmation_message = (
 # sucess messages
 delete_success_message = "Yeet! This job is now gone."
 restrict_success_message = "Hurray! From now on %s can set up recurring messages. Run the command again to toggle the restriction setting."
-timezone_change_success_message = "Yipee! Your timezone has been updated to UTC%s."
+timezone_change_success_message = "Yipee! Your timezone has been updated to %s."
 reset_success_messge = "Yeet! No more recurring messages in this chat."
 jobs_creation_success_message = "The following recurring messages are created, /list to view all messages and their details:\n"
 attribute_change_success_message = "Yipee! Your recurring message is updated successfully.\n\n/list to view all messages and their details."
@@ -80,7 +79,7 @@ user_unauthorized_error_message = "Oh no... You are unauthorized to run this com
 wrong_restrction_error_message = (
     "Restriction is already set. Please ask %s to unset bot restriction first."
 )
-timezone_nochange_error_message = "Whut? That's the same timezone!"
+invalid_timezone_message = "That's not a valid timezone. Examples of valid timezones are UTC, UTC+08:30, +08:30, Asia/Singapore, Europe/London etc."
 invalid_new_job_message = "A job with this name already exists. Please /add and create a new job, or /edit this job."
 quiz_unavailable_message = 'Recurring messages unfortunately cannot support recurring quizzes in channels and groups... because Telegram does not return the correct option id for forwarded messages (◕︵◕) (<a href="https://docs.python-telegram-bot.org/en/v12.5.1/telegram.poll.html#telegram.Poll.correct_option_id">see docs</a>)'
 type_unavailable_message = (

@@ -19,11 +19,6 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await replies.text(update, replies.prompt_start_message)
         return ConversationHandler.END
 
-    user_id = update.message.from_user.id
-
-    payload = {"tz_offset": chat_entry.get("tz_offset")}
-    context.chat_data[user_id] = payload
-
     await replies.text(
         update, replies.change_timezone_message, reply_markup=replies.force_reply
     )
@@ -41,32 +36,17 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ConversationHandler.END
 
     # check validity
-    tz_values = utils.extract_tz_values(update.message.text)
-    if not tz_values:
-        await replies.text(
-            update, replies.error_message, reply_markup=replies.force_reply
-        )
-        context.chat_data.pop(user_id, None)
-        return ConversationHandler.END
-
-    utc_tz, tz_offset = utils.calc_tz(tz_values)
-    if tz_offset < -12 or tz_offset > 14:
-        await replies.text(update, replies.error_message)
+    timezone, tz_offset, err = utils.extract_timezone(update.message.text)
+    if err is not None:
+        await replies.text(update, replies.invalid_timezone_message)
         context.chat_data.pop(user_id, None)
         return ConversationHandler.END
 
     chat_id = update.message.chat.id
     chat_type = update.message.chat.type
 
-    payload = context.chat_data[user_id]
-
-    if tz_offset == payload["tz_offset"]:
-        await replies.text(update, replies.timezone_nochange_error_message)
-        context.chat_data.pop(user_id, None)
-        return ConversationHandler.END
-
     # update chat entry
-    payload = {"tz_offset": tz_offset, "utc_tz": utc_tz}
+    payload = {"tz_offset": tz_offset, "utc_tz": timezone}
     res = await dbutils.update_chat_entry(db_service, chat_id, payload, "utc_tz")
     if res.modified_count <= 0:
         log.logger.error(
@@ -78,7 +58,7 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if chat_type == "private":
         res = await dbutils.update_chats_tz_by_type(
-            db_service, user_id, tz_offset, "channel"
+            db_service, user_id, tz_offset, "channel", utc_tz=timezone
         )
 
     # update job entries
@@ -87,7 +67,9 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if job_entry.get("nextrun_ts", "") == "":
             continue
         crontab = job_entry.get("crontab", "")
-        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, tz_offset)
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
+            crontab, timezone, tz_offset
+        )
         payload = {"nextrun_ts": db_nextrun_ts, "user_nextrun_ts": user_nextrun_ts}
         res = await dbutils.update_entry_by_jobname(db_service, job_entry, payload)
         if res.modified_count <= 0:
@@ -98,6 +80,10 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             context.chat_data.pop(user_id, None)
             return ConversationHandler.END
 
-    await replies.text(update, replies.timezone_change_success_message % utc_tz)
+    await replies.text(
+        update,
+        replies.timezone_change_success_message
+        % utils.format_timezone(timezone, tz_offset),
+    )
     context.chat_data.pop(user_id, None)
     return ConversationHandler.END

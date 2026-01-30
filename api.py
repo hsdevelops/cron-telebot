@@ -154,8 +154,6 @@ async def process_job(
         message_thread_id,
     )
 
-    errors = [*errors, {"error": err, "timestamp": now}]
-
     if err is None:
         if option_delete_previous != "" and previous_message_id != "":
             await teleapi.delete_message(
@@ -165,8 +163,14 @@ async def process_job(
         # calculate and update next run time
         chat_entry = await dbutils.find_chat_by_chatid(db_service, chat_id) or {}
         user_tz_offset = chat_entry.get("tz_offset", config.TZ_OFFSET)
-        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+        user_timezone = chat_entry.get("utc_tz")
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
+            crontab, user_timezone, user_tz_offset
+        )
         errors = []
+    else:
+        errors = [*errors, {"error": err, "timestamp": now}]
+        bot_message_id = previous_message_id
 
     payload = {
         "pending_ts": None,

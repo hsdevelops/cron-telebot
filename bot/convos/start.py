@@ -26,14 +26,9 @@ async def add_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # check validity
-    tz_values = utils.extract_tz_values(update.message.text)
-    if not tz_values:
-        await replies.text(update, replies.error_message)
-        return ConversationHandler.END
-
-    utc_tz, tz_offset = utils.calc_tz(tz_values)
-    if tz_offset < -12 or tz_offset > 14:
-        await replies.text(update, replies.error_message)
+    timezone, tz_offset, err = utils.extract_timezone(update.message.text)
+    if err is not None:
+        await replies.text(update, replies.invalid_timezone_message)
         return ConversationHandler.END
 
     chat_exists = await dbutils.chat_exists(db_service, update.message.chat.id)
@@ -44,7 +39,7 @@ async def add_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             chat_title=update.message.chat.title,
             chat_type=update.message.chat.type,
             tz_offset=tz_offset,
-            utc_tz=utc_tz,
+            utc_tz=timezone,
             created_by=update.message.from_user.id,
             telegram_ts=update.message.date,
         )

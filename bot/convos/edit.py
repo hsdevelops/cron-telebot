@@ -297,9 +297,12 @@ async def prepare_crontab_update(
 
     # arrange next run date and time
     chat_entry = await dbutils.find_chat_by_chatid(db_service, update.message.chat.id)
+    user_timezone = chat_entry.get("utc_tz")
     user_tz_offset = chat_entry.get("tz_offset")
     try:
-        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
+            crontab, user_timezone, user_tz_offset
+        )
     except Exception:
         return None, None, Exception()
 

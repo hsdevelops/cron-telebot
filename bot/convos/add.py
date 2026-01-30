@@ -36,6 +36,7 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
         if update.message.is_topic_message
         else None,
         "tz_offset": chat_entry.get("tz_offset"),
+        "utc_tz": chat_entry.get("utc_tz"),
     }
 
     # person limit
@@ -154,12 +155,15 @@ async def add_crontab(
     user_id = update.message.from_user.id
     payload = context.chat_data[user_id]
 
+    user_timezone = payload["utc_tz"]
     user_tz_offset = payload["tz_offset"]
 
     crontab = update.message.text
     try:
         description = get_description(crontab).lower()
-        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(crontab, user_tz_offset)
+        user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
+            crontab, user_timezone, user_tz_offset
+        )
     except Exception as e:  # crontab is not valid
         log.logger.info(
             f"[BOT] Invalid crontab received, crontab = {crontab}, err = {e}"
