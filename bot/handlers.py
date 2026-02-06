@@ -156,9 +156,7 @@ bot_handlers = [
     ),
     # on different commands - answer in Telegram
     CommandHandler("help", commands.help),
-    CommandHandler(
-        "options", commands.list_options
-    ),  # TODO - make these three a convo too
+    CommandHandler("options", commands.list_options),
     CommandHandler("adminsonly", commands.option_restrict_to_admins),
     CommandHandler("creatoronly", commands.option_restrict_to_user),
     # on noncommand i.e message

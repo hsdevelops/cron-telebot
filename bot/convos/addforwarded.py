@@ -69,7 +69,7 @@ async def add_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
     # add new job
     payload = {
         "user_id": user_id,
-        "user_bot_token": chat_entry.get("user_bot_token"),  # TODO - check which
+        "user_bot_token": chat_entry.get("user_bot_token"),
         "tz_offset": chat_entry.get("tz_offset"),
         "utc_tz": chat_entry.get("utc_tz"),
         "channel_id": forwarded_chat_info.id,
