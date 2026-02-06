@@ -1,6 +1,7 @@
 from unittest import mock
 import pytest
 from database.dbutils import dbutils_job
+from common import utils
 
 
 @pytest.fixture
@@ -170,6 +171,14 @@ async def test_entry_exists(mongo_service, mock_jobs, chat_id, expected):
     await mongo_service.main_collection.insert_many(mock_jobs)
     res = await dbutils_job.entry_exists(mongo_service, chat_id, "test_job_1")
     assert res is expected
+
+
+def test_make_due_jobs_query_pending_and_paused(monkeypatch):
+    monkeypatch.setattr(utils, "now", mock.MagicMock(return_value="ts"))
+    q = dbutils_job.make_due_jobs_query("ts")
+    assert "$or" in q
+    assert q["$or"][0]["paused_ts"] == ""
+    assert q["$or"][1]["paused_ts"]["$exists"] is False
 
 
 """

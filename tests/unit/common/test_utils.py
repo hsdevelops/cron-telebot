@@ -43,6 +43,13 @@ def test_extract_timezone(string, exp_tz, exp_offset, exp_err):
     assert err == exp_err
 
 
+def test_extract_timezone_weird_string():
+    utc_tz, tz_offset, err = utils.extract_timezone("weird!!!")
+    assert utc_tz == "UTC"
+    assert tz_offset == 0
+    assert err == "no match"
+
+
 def test_extract_jobs():
     text = """
     30 8 * * 1 Normal job
