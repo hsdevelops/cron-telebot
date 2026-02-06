@@ -215,11 +215,8 @@ async def download_photo(
             return files, err
 
         json_resp = file_details_response.get("json") or {}
-        file_path = (
-            json_resp.get("result", {}).get("file_path")
-            if isinstance(json_resp, dict)
-            else None
-        )
+        result = json_resp.get("result") if isinstance(json_resp, dict) else None
+        file_path = result.get("file_path") if isinstance(result, dict) else None
         if not file_path:
             err = f"Failed to resolve file_path, bot_token = {bot_token}, photo_id = {photo_id}"
             log.logger.warning(f"[TELEGRAM API] {err}")
@@ -249,8 +246,7 @@ async def download_photo(
             f"[TELEGRAM API] download_photo failed: {type(e).__name__} - {e}"
         )
         try:
-            if os.path.exists(photo_id):
-                os.remove(photo_id)
+            os.remove(photo_id)
         except Exception:
             pass
         return files, str(e)

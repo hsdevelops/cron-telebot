@@ -80,7 +80,7 @@ async def find_entries_by_nextrun(
 ) -> List[Optional[Any]]:
     q = make_due_jobs_query(ts)
     try:
-        return await db_service.find_entries(q, [("created_at", ASCENDING)])
+        return await db_service.find_entries(q, [("created_ts", ASCENDING)])
     except PyMongoError as e:
         log.logger.warning(
             f"[DB] find_entries_by_nextrun failed: {type(e).__name__} - {e}"
@@ -157,8 +157,11 @@ async def add_new_entry(
     user_nextrun_ts: str = "",
     user_bot_token: Optional[str] = None,
     message_thread_id: Optional[int] = None,
-    errors: List[Exception] = [],
+    errors: Optional[List[Exception]] = None,
 ) -> Optional[InsertOneResult]:
+    if errors is None:
+        errors = []
+
     result = None
     try:
         result = await db_service.insert_new_entry(

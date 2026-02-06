@@ -4,11 +4,12 @@ import aiohttp
 from common import log
 
 
-class RequestResponse(TypedDict):
+class RequestResponse(TypedDict, total=False):
     message_id: Optional[str]
-    status: int
+    status: Optional[int]
     content: Optional[bytes]
     error: Optional[str]
+    json: Optional[Any]
 
 
 async def request(
@@ -54,3 +55,11 @@ async def request(
             "status": None,
             "error": str(e),
         }
+
+    finally:
+        if files:
+            for file_obj in files.values():
+                try:
+                    file_obj.close()
+                except Exception:
+                    pass

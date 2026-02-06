@@ -48,7 +48,11 @@ async def test_start_add_timezone_success(send_msg, simple_context):
     chat = Chat(id=1, type="private")
     usr = User(id=1, first_name="hs", is_bot=False)
     msg = Message(
-        date=datetime.now(timezone.utc), chat=chat, message_id=1, from_user=usr, text="UTC"
+        date=datetime.now(timezone.utc),
+        chat=chat,
+        message_id=1,
+        from_user=usr,
+        text="UTC",
     )
     update = Update(message=msg, update_id=1)
     with mock.patch("common.utils.extract_timezone", return_value=("UTC", 0, None)):
