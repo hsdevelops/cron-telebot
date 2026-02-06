@@ -1,6 +1,5 @@
 from telegram import Update
 
-from email import utils
 from common import log, utils
 from typing import Any, Optional
 

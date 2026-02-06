@@ -33,8 +33,10 @@ async def send_media_group(
     query = {
         "chat_id": chat_id,
         "media": media,
-        "reply_to_message_id": message_thread_id,
     }
+    if message_thread_id is not None:
+        query["reply_to_message_id"] = message_thread_id
+
     query_string = urlencode(query)
     endpoint = (
         f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMediaGroup?{query_string}"
@@ -56,8 +58,10 @@ async def send_single_photo(
         "photo": photo_id,
         "caption": content,
         "parse_mode": "html",
-        "reply_to_message_id": message_thread_id,
     }
+    if message_thread_id is not None:
+        query["reply_to_message_id"] = message_thread_id
+
     query_string = urlencode(query)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendPhoto?{query_string}"
     resp = await request(http_session, endpoint)
@@ -124,8 +128,10 @@ async def send_poll(
         "explanation_parse_mode": "html",
         "is_closed": poll_content.get("is_closed"),
         "close_date": poll_content.get("close_date"),
-        "reply_to_message_id": message_thread_id,
     }
+    if message_thread_id is not None:
+        parameters["reply_to_message_id"] = message_thread_id
+
     resp = await request(http_session, endpoint, data=parameters)
     return resp
 
@@ -141,8 +147,10 @@ async def send_text(
         "chat_id": chat_id,
         "text": content,
         "parse_mode": "html",
-        "reply_to_message_id": message_thread_id,
     }
+    if message_thread_id is not None:
+        query["reply_to_message_id"] = message_thread_id
+
     query_string = urlencode(query)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMessage?{query_string}"
     resp = await request(http_session, endpoint)
