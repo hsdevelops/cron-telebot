@@ -72,7 +72,12 @@ async def run(request: Request) -> Response:
         bounded_process_job(db_service, http_session, entry, sem) for entry in entries
     ]
     # gather all tasks, exceptions are handled individually inside bounded_process_job
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    except Exception as e:
+        log.logger.error(f"[API] Job processing failed: {type(e).__name__} - {e}")
+        return Response(status_code=HTTPStatus.INTERNAL_SERVER_ERROR)
+
     end_time = time.perf_counter()
 
     gc.collect()  # https://github.com/googleapis/google-api-python-client/issues/535
@@ -108,6 +113,10 @@ async def process_job(
     http_session: aiohttp.ClientSession,
     entry: Optional[Any],
 ) -> None:
+    if entry is None:
+        log.logger.warning("[TELEGRAM API] Skipping empty entry")
+        return
+
     now = utils.now()
 
     job_id = entry["_id"]
@@ -135,7 +144,8 @@ async def process_job(
     res = await dbutils.update_entry_by_jobname(
         db_service, entry, payload, q=dbutils.make_due_jobs_query(now)
     )
-    if res.modified_count <= 0:
+
+    if getattr(res, "modified_count", 0) <= 0:
         log.logger.info(
             f'[TELEGRAM API] Job likely being processed by another worker, job_id="{job_id}", chat_id={chat_id}'
         )
@@ -224,15 +234,22 @@ async def send_message(
         f'[TELEGRAM API] Sent message, job_id="{job_id}", chat_id={chat_id}, response_status={resp.get("status")}'
     )
 
-    json = resp.get("json", {})
+    json = resp.get("json") or {}
     status = resp.get("status")
 
     if status != 200:
-        err = "Error {}: {}".format(status, json["description"])
+        err_description = (
+            json.get("description") if isinstance(json, dict) else "Unknown error"
+        )
+        err = "Error {}: {}".format(status, err_description)
         return "", err
 
     if photo_group_id != "":
-        msg_ids = [str(message["message_id"]) for message in json.get("result", [])]
+        msg_ids = [
+            str(message.get("message_id"))
+            for message in json.get("result", [])
+            if isinstance(message, dict) and message.get("message_id") is not None
+        ]
         return ";".join(msg_ids), None
 
     message_id = json.get("result", {}).get("message_id") or ""

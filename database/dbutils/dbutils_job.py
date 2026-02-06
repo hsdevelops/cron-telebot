@@ -1,6 +1,7 @@
 from pymongo import ASCENDING, DESCENDING
 from common import utils, log
 from common.enums import ContentType
+from database.dbutils.dbutils_empty import empty_update_result
 from database.mongo import MongoService
 from typing import List, Optional, Dict, Any
 from pymongo.results import UpdateResult, InsertOneResult
@@ -31,10 +32,14 @@ Getters
 
 async def find_latest_entry(db_service: MongoService, chat_id: int) -> Optional[Any]:
     q = {"chat_id": float(chat_id), "removed_ts": ""}
-    result = await db_service.find_entries(q, [("created_ts", DESCENDING)])
-    if len(result) <= 0:
+    try:
+        result = await db_service.find_entries(q, [("created_ts", DESCENDING)])
+        if len(result) <= 0:
+            return None
+        return result[0]
+    except PyMongoError as e:
+        log.logger.warning(f"[DB] find_latest_entry failed: {type(e).__name__} - {e}")
         return None
-    return result[0]
 
 
 async def find_entry_by_jobname(
@@ -43,7 +48,13 @@ async def find_entry_by_jobname(
     q = {"chat_id": float(chat_id), "jobname": jobname}
     if not include_removed:
         q["removed_ts"] = ""
-    return await db_service.find_one_entry(q)
+    try:
+        return await db_service.find_one_entry(q)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] find_entry_by_jobname failed: {type(e).__name__} - {e}"
+        )
+        return None
 
 
 async def find_entries_removed_between(
@@ -55,14 +66,26 @@ async def find_entries_removed_between(
     q = {"removed_ts": {"$gte": start_ts, "$lte": end_ts}}
     if err_status is not None:
         q["errors.error"] = {"$regex": f"^Error {err_status}"}
-    return await db_service.find_entries(q)
+    try:
+        return await db_service.find_entries(q)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] find_entries_removed_between failed: {type(e).__name__} - {e}"
+        )
+        return []
 
 
 async def find_entries_by_nextrun(
     db_service: MongoService, ts: str
 ) -> List[Optional[Any]]:
     q = make_due_jobs_query(ts)
-    return await db_service.find_entries(q, [("created_at", ASCENDING)])
+    try:
+        return await db_service.find_entries(q, [("created_at", ASCENDING)])
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] find_entries_by_nextrun failed: {type(e).__name__} - {e}"
+        )
+        return []
 
 
 async def find_entries_by_content_type(
@@ -73,23 +96,45 @@ async def find_entries_by_content_type(
         "removed_ts": "",
         "content_type": content_type,
     }
-    return await db_service.find_entries(q)
+    try:
+        return await db_service.find_entries(q)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] find_entries_by_content_type failed: {type(e).__name__} - {e}"
+        )
+        return []
 
 
 async def find_entries_by_chatid(
     db_service: MongoService, chat_id: int
 ) -> List[Optional[Any]]:
     q = {"chat_id": float(chat_id), "removed_ts": ""}
-    return await db_service.find_entries(q)
+    try:
+        return await db_service.find_entries(q)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] find_entries_by_chatid failed: {type(e).__name__} - {e}"
+        )
+        return []
 
 
 async def count_entries_by_userid(db_service: MongoService, user_id: int) -> int:
     q = {"created_by": user_id, "removed_ts": ""}
-    return await db_service.count_entries(q)
+    try:
+        return await db_service.count_entries(q)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] count_entries_by_userid failed: {type(e).__name__} - {e}"
+        )
+        return 0
 
 
 async def entry_exists(db_service: MongoService, chat_id: int, jobname: str) -> bool:
-    return await find_entry_by_jobname(db_service, chat_id, jobname) is not None
+    try:
+        return await find_entry_by_jobname(db_service, chat_id, jobname) is not None
+    except PyMongoError as e:
+        log.logger.warning(f"[DB] entry_exists failed: {type(e).__name__} - {e}")
+        return False
 
 
 """
@@ -142,7 +187,7 @@ async def add_new_entry(
         )
         log.logger.info(f'[DB] Created new job, jobname="{jobname}", chat_id={chat_id}')
     except PyMongoError as e:
-        log.logger.warning(e)
+        log.logger.warning(f"[DB] add_new_entry failed: {type(e).__name__} - {e}")
 
     return result
 
@@ -150,14 +195,33 @@ async def add_new_entry(
 async def update_entry_by_jobname(
     db_service: MongoService, entry: Optional[Any], update: Optional[Any], q: Dict = {}
 ) -> UpdateResult:
-    q = {
-        **q,
-        "created_ts": entry["created_ts"],
-        "chat_id": entry["chat_id"],
-        "jobname": entry["jobname"],
-        "removed_ts": "",
-    }
-    return await db_service.update_entry(q, update)
+    if entry is None:
+        log.logger.warning("[DB] update_entry_by_jobname called with empty entry")
+        return empty_update_result()
+
+    created_ts = entry.get("created_ts")
+    chat_id = entry.get("chat_id")
+    jobname = entry.get("jobname")
+    if created_ts is None or chat_id is None or jobname is None:
+        log.logger.warning(
+            "[DB] update_entry_by_jobname missing required fields on entry"
+        )
+        return empty_update_result()
+
+    try:
+        q = {
+            **q,
+            "created_ts": created_ts,
+            "chat_id": chat_id,
+            "jobname": jobname,
+            "removed_ts": "",
+        }
+        return await db_service.update_entry(q, update)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] update_entry_by_jobname failed: {type(e).__name__} - {e}"
+        )
+        return empty_update_result()
 
 
 async def update_entry_by_jobid(
@@ -169,7 +233,13 @@ async def update_entry_by_jobid(
     q: Dict[str, Any] = {"_id": entry_id}
     if not include_removed:
         q["removed_ts"] = ""
-    return await db_service.update_entry(q, update)
+    try:
+        return await db_service.update_entry(q, update)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] update_entry_by_jobid failed: {type(e).__name__} - {e}"
+        )
+        return empty_update_result()
 
 
 async def remove_entries_by_chat(
@@ -177,4 +247,10 @@ async def remove_entries_by_chat(
 ) -> UpdateResult:
     q = {"chat_id": float(chat_id)}
     payload = {"removed_ts": utils.now()}
-    return await db_service.update_multiple_entries(q, payload)
+    try:
+        return await db_service.update_multiple_entries(q, payload)
+    except PyMongoError as e:
+        log.logger.warning(
+            f"[DB] remove_entries_by_chat failed: {type(e).__name__} - {e}"
+        )
+        return empty_update_result()

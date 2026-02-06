@@ -113,6 +113,10 @@ async def toggle_delete_previous(
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    if entry is None:
+        await replies.text(update, replies.error_message)
+        return
+
     new_option_value = "" if entry.get("option_delete_previous", "") != "" else True
     payload = {
         "option_delete_previous": new_option_value,
@@ -132,6 +136,10 @@ async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    if entry is None:
+        await replies.text(update, replies.error_message)
+        return
+
     new_option_value = "" if entry.get("paused_ts", "") != "" else utils.now()
     payload = {
         "paused_ts": new_option_value,
@@ -180,6 +188,9 @@ async def handle_edit_content(
         mongo_key = "crontab"
 
     entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    if entry is None:
+        await replies.text(update, replies.error_message)
+        return ConversationHandler.END
 
     if attr == attr_content:
         old_content_type = entry.get("content_type", "")
@@ -225,6 +236,9 @@ async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    if entry is None:
+        await replies.text(update, replies.error_message)
+        return ConversationHandler.END
 
     poll_json = update.message.poll
     payload = {
@@ -248,6 +262,9 @@ async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+    if entry is None:
+        await replies.text(update, replies.error_message)
+        return ConversationHandler.END
 
     payload = {"last_updated_by": update.message.from_user.id}
     if entry.get("photo_id", "") == "":
@@ -282,6 +299,9 @@ async def handle_clear_photos(
     if res == "yes":
         db_service: mongo.MongoService = context.application.bot_data["mongo"]
         entry = await dbutils.find_entry_by_jobname(db_service, chat_id, jobname)
+        if entry is None:
+            await replies.text(update, replies.error_message)
+            return ConversationHandler.END
 
         if entry.get("photo_id", "") == "":
             await replies.text(update, replies.no_photos_to_delete_error_message)
@@ -316,6 +336,9 @@ async def prepare_crontab_update(
 
     # arrange next run date and time
     chat_entry = await dbutils.find_chat_by_chatid(db_service, update.message.chat.id)
+    if chat_entry is None:
+        return None, None, Exception()
+
     user_timezone = chat_entry.get("utc_tz")
     user_tz_offset = chat_entry.get("tz_offset")
     try:
