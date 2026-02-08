@@ -12,6 +12,9 @@ from database.dbutils import dbutils
 
 async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send a message when the command /list is issued."""
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     entries = await dbutils.find_entries_by_chatid(db_service, update.message.chat.id)

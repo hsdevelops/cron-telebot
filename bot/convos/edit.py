@@ -32,6 +32,9 @@ attrs = [
 
 async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """Send a message when the command /edit is issued."""
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     rights = await permissions.check_rights(update, context, db_service)

@@ -11,6 +11,9 @@ from telegram.ext import ConversationHandler
 # context. Error handlers also receive the raised TelegramError object in error.
 async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send a message when the command /start is issued."""
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     chat_entry = await dbutils.find_chat_by_chatid(db_service, update.message.chat.id)

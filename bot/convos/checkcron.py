@@ -9,6 +9,9 @@ from telegram.ext import ConversationHandler
 
 async def command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """Send a message when the command /checkcron is issued."""
+    if update.message is None:
+        return ConversationHandler.END
+
     await replies.text(
         update, replies.checkcron_message, reply_markup=replies.force_reply
     )

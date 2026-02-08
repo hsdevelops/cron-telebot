@@ -13,6 +13,9 @@ from telegram.ext import ConversationHandler
 
 async def command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """Send a message when the command /addmultiple is issued."""
+    if update.message is None:
+        return ConversationHandler.END
+
     await replies.text(
         update, replies.request_jobs_message, reply_markup=replies.force_reply
     )

@@ -14,6 +14,8 @@ from typing import Any, Optional
 
 async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """Send a message when the command /changesender is issued."""
+    if update.message is None:
+        return ConversationHandler.END
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 

@@ -16,6 +16,9 @@ from teleapi.endpoints import transfer_photo_between_bots
 
 async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """Send a message when the command /add is issued."""
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # timezone must be defined in order to create new job
