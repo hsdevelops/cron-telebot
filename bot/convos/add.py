@@ -61,6 +61,11 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
 async def add_jobname(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[int]:
+    if update.message is None:
+        if update.effective_user is not None:
+            context.chat_data.pop(update.effective_user.id, None)
+        return ConversationHandler.END
+
     user_id = update.message.from_user.id
     payload = context.chat_data[user_id]
 
@@ -84,10 +89,9 @@ async def add_jobname(
 
 # state 1
 async def add_content(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     if update.message is None:
-        await replies.text(update, replies.convo_ended_message)
-        context.chat_data.pop(user_id, None)
+        if update.effective_user is not None:
+            context.chat_data.pop(update.effective_user.id, None)
         return ConversationHandler.END
 
     user_id = update.message.from_user.id
@@ -153,6 +157,11 @@ async def add_photo_group(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def add_crontab(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[int]:
+    if update.message is None:
+        if update.effective_user is not None:
+            context.chat_data.pop(update.effective_user.id, None)
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     user_id = update.message.from_user.id

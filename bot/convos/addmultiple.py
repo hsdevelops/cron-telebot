@@ -32,6 +32,8 @@ async def add_jobs(
         return ConversationHandler.END
 
     msg = update.message
+    if msg is None:
+        return ConversationHandler.END
 
     # parse user response
     res = utils.extract_jobs(msg.text_html)

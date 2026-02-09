@@ -31,6 +31,9 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def show_job_details(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     chat_id = update.message.chat.id

@@ -80,6 +80,65 @@ async def test_check_rights_no_retrictions(
 
 
 @pytest.mark.asyncio
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+async def test_check_rights_empty_restriction_skips_admin_check(
+    simple_update, simple_context, mongo_service, mock_group
+):
+    mock_group["restriction"] = ""
+    await mongo_service.insert_new_chat(mock_group)
+
+    simple_context.bot.get_chat_member = mock.AsyncMock(
+        side_effect=Exception("should not be called")
+    )
+    res = await check_rights(simple_update, simple_context, mongo_service)
+    assert res is True
+
+
+@pytest.mark.asyncio
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+async def test_check_rights_owner_allows_creator(
+    simple_update, simple_context, mongo_service, mock_group
+):
+    mock_group["restriction"] = Restriction.OWNER.value
+    mock_group["created_by"] = simple_update.message.from_user.id
+    await mongo_service.insert_new_chat(mock_group)
+
+    simple_context.bot.get_chat_member = mock.AsyncMock(
+        side_effect=Exception("should not be called")
+    )
+    res = await check_rights(simple_update, simple_context, mongo_service)
+    assert res is True
+
+
+@pytest.mark.asyncio
+@mock.patch("bot.replies.text")
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
+async def test_check_rights_admin_requires_bot_admin(
+    send_msg, simple_update, simple_context, mongo_service, mock_group
+):
+    mock_group["restriction"] = Restriction.ADMIN.value
+    await mongo_service.insert_new_chat(mock_group)
+
+    from telegram.error import Forbidden
+
+    simple_context.bot.get_chat_member = mock.AsyncMock(
+        side_effect=Forbidden("forbidden")
+    )
+    res = await check_rights(simple_update, simple_context, mongo_service)
+    assert res is False
+    send_msg.assert_called_once_with(simple_update, replies.chat_admin_required_message)
+
+
+@pytest.mark.asyncio
+@mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=-1))
+async def test_check_rights_invalid_chat_id(
+    simple_update, simple_context, mongo_service
+):
+    res = await check_rights(simple_update, simple_context, mongo_service)
+    assert res is False
+
+
+@pytest.mark.asyncio
 @mock.patch("bot.replies.text")
 @mock.patch("bot.convos.permissions.get_chat_id", mock.AsyncMock(return_value=1))
 async def test_check_rights_creator(

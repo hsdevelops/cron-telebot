@@ -58,6 +58,9 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
 
 # state 0
 async def choose_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     jobname = str(update.message.text)
@@ -75,6 +78,9 @@ async def choose_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # state 1
 async def choose_attribute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     attr = str(update.message.text)
     context.user_data["attribute"] = attr
 
@@ -111,6 +117,9 @@ async def choose_attribute(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def toggle_delete_previous(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
+    if update.message is None:
+        return ConversationHandler.END
+
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
@@ -134,6 +143,9 @@ async def toggle_delete_previous(
 
 
 async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None:
+        return ConversationHandler.END
+
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
@@ -173,6 +185,9 @@ async def toggle_pause_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def handle_edit_content(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     jobname, attr = context.user_data["jobname"], context.user_data["attribute"]
     chat_id = update.message.chat.id
 
@@ -234,6 +249,9 @@ async def handle_edit_content(
 
 
 async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
@@ -260,6 +278,9 @@ async def handle_edit_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 # state 3
 async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
 
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
@@ -292,6 +313,9 @@ async def handle_add_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def handle_clear_photos(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> Optional[int]:
+    if update.message is None:
+        return ConversationHandler.END
+
     jobname, chat_id = context.user_data["jobname"], update.message.chat.id
     res = update.message.text.lower()
 
@@ -332,15 +356,18 @@ async def handle_clear_photos(
 async def prepare_crontab_update(
     update: Update, crontab: str, db_service: mongo.MongoService
 ) -> Tuple[Optional[str], Optional[Dict[str, Any]], Optional[Exception]]:
+    if update.message is None:
+        return None, None, Exception("Missing message in update")
+
     try:
         description = get_description(crontab).lower()
     except Exception:  # crontab is not valid
-        return None, None, Exception()
+        return None, None, Exception(f"Invalid crontab: {crontab}")
 
     # arrange next run date and time
     chat_entry = await dbutils.find_chat_by_chatid(db_service, update.message.chat.id)
     if chat_entry is None:
-        return None, None, Exception()
+        return None, None, Exception("Chat entry not found")
 
     user_timezone = chat_entry.get("utc_tz")
     user_tz_offset = chat_entry.get("tz_offset")
@@ -348,8 +375,8 @@ async def prepare_crontab_update(
         user_nextrun_ts, db_nextrun_ts = utils.calc_next_run(
             crontab, user_timezone, user_tz_offset
         )
-    except Exception:
-        return None, None, Exception()
+    except Exception as e:
+        return None, None, Exception(f"Failed to compute next run: {e}")
 
     # update db entry
     payload = {

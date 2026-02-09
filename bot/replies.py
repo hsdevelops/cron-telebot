@@ -98,6 +98,7 @@ private_only_error_message = "This command can only be run in private chat with 
 group_only_error_message = "This command can only be run in groups"
 missing_chats_error_message = "Please add and set up %s in a group"
 missing_bot_in_group_message = "Terminating conversation... \n\nPlease add bot into the group as an admin and enable:\n1. <i>Change Channel Info</i> and\n2. <i>Post Messages</i>\nbefore running /changesender."
+chat_admin_required_message = "Please promote me to admin so I can check permissions."
 missing_job_error_message = 'You do not have a job named "%s". You may only /list and /delete jobs that are active.'
 internal_failure_message = "Failed to create/update/remove your cron job... please try to /add or /delete again. If this happens consistently, please contact the bot owner at hs.develops.1@gmail.com."
 start_error_message = "Failed to set up your chat for usage with @cron_telebot. Please try to /start again. If this happens consistently, please contact the bot owner at hs.develops.1@gmail.com."
@@ -198,8 +199,12 @@ async def text(
     disable_web_page_preview=True,
     reply_markup=ReplyKeyboardRemove(),
 ) -> Optional[Message]:
+    message = update.effective_message
+    if message is None:
+        return None
+
     try:
-        return await update.message.reply_text(
+        return await message.reply_text(
             msg,
             parse_mode=parse_mode,
             reply_markup=reply_markup,

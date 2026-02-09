@@ -29,20 +29,21 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     user_id = update.message.from_user.id
 
     rights = await permissions.check_rights(update, context, db_service)
     if not rights:
-        context.chat_data.pop(user_id, None)
         return ConversationHandler.END
 
     # check validity
     timezone, tz_offset, err = utils.extract_timezone(update.message.text)
     if err is not None:
         await replies.text(update, replies.invalid_timezone_message)
-        context.chat_data.pop(user_id, None)
         return ConversationHandler.END
 
     chat_id = update.message.chat.id
@@ -56,7 +57,6 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             f"[BOT] Failed to update chat entry, chat_id = {chat_id}, payload = {payload}"
         )
         await replies.text(update, replies.internal_failure_message)
-        context.chat_data.pop(user_id, None)
         return ConversationHandler.END
 
     if chat_type == "private":
@@ -80,7 +80,6 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 f'[BOT] Failed to update job entry, chat_id = {job_entry["_id"]}, payload = {payload}'
             )
             await replies.text(update, replies.internal_failure_message)
-            context.chat_data.pop(user_id, None)
             return ConversationHandler.END
 
     await replies.text(
@@ -88,5 +87,4 @@ async def update_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         replies.timezone_change_success_message
         % utils.format_timezone(timezone, tz_offset),
     )
-    context.chat_data.pop(user_id, None)
     return ConversationHandler.END

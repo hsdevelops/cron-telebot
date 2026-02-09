@@ -19,6 +19,9 @@ async def command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def decrypt_cron(update: Update, _: ContextTypes) -> Optional[int]:
+    if update.message is None:
+        return ConversationHandler.END
+
     try:
         description = get_description(update.message.text).lower()
     except Exception:  # crontab is not valid

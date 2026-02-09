@@ -42,6 +42,9 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optiona
 
 # state 0
 async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
     http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
@@ -73,6 +76,9 @@ async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 # state 1
 async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     new_token = str(update.message.text)
     user_id = update.message.from_user.id
 

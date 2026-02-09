@@ -26,6 +26,9 @@ async def command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def add_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message is None:
+        return ConversationHandler.END
+
     db_service: mongo.MongoService = context.application.bot_data["mongo"]
 
     # check validity

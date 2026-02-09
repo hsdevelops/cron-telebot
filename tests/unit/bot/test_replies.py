@@ -46,6 +46,14 @@ async def test_text_handles_exception(simple_update, monkeypatch):
     async def boom(*_, **__):
         raise Exception("boom")
 
-    monkeypatch.setattr(type(simple_update.message), "reply_text", boom)
+    monkeypatch.setattr(type(simple_update.effective_message), "reply_text", boom)
     res = await replies.text(simple_update, "hi")
+    assert res is None
+
+
+@pytest.mark.asyncio
+async def test_text_no_effective_message():
+    update = mock.Mock()
+    update.effective_message = None
+    res = await replies.text(update, "hi")
     assert res is None
