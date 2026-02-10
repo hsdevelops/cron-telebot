@@ -64,10 +64,10 @@ async def choose_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return convo.states.s1
 
     # Revert back to default — both chat and jobs
-    has_err = await reset_sender(
+    err = await reset_sender(
         db_service, http_session, chat_entry["chat_id"], user_id, None, prev_token
     )
-    if has_err:
+    if err:
         await replies.text(update, replies.missing_bot_in_group_message)
         return ConversationHandler.END
     await replies.text(update, replies.sender_reset_success_message)
@@ -86,13 +86,16 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
 
     # check if bot exists
-    resp = await teleapi.get_bot_details(http_session, new_token)
-    if resp.get("status") != 200:
+    resp, err = await teleapi.get_bot_details(http_session, new_token)
+    if err:
+        await update.message.reply_text("Failed to connect to the new bot token.")
+        return ConversationHandler.END
+    if resp.status != 200:
         await replies.text(update, replies.error_message)
         return convo.states.s1
 
     bot_data = {
-        **resp.get("json")["result"],
+        **resp.json["result"],
         "token": new_token,
         "created_by": user_id,
         "updated_at": utils.now(),
@@ -100,10 +103,10 @@ async def update_sender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await dbutils.upsert_new_bot(db_service, user_id, bot_data)
 
     chat_id, chat_title = context.user_data["chat_id"], context.user_data["chat_title"]
-    has_err = await reset_sender(
+    err = await reset_sender(
         db_service, http_session, chat_id, user_id, new_token, None
     )
-    if has_err:
+    if err:
         await replies.text(update, replies.missing_bot_in_group_message)
         return ConversationHandler.END
 
@@ -123,13 +126,13 @@ async def reset_sender(
     user_id: int,
     new_token: Optional[str],
     prev_token: Optional[Any] = None,
-) -> bool:
+) -> Optional[str]:
     # special case — single photos can only be sent from the same bot
     single_photo_entries = await dbutils.find_entries_by_content_type(
         db_service, chat_id
     )
     for entry in single_photo_entries:
-        resp, new_photo_id = await teleapi.transfer_photo_between_bots(
+        new_photo_id, err = await teleapi.transfer_photo_between_bots(
             http_session,
             db_service,
             new_token,
@@ -138,11 +141,10 @@ async def reset_sender(
             entry["photo_id"],
             entry["_id"],
         )
-        status = resp.get("status")
-        if status != 200:
-            return True
+        if err:
+            return err
         log.logger.info(
-            f'[BOT] User "{user_id}" transferred photo "{new_photo_id}", chat_id="{chat_id}", status={status}'
+            f'[BOT] User "{user_id}" transferred photo "{new_photo_id}", chat_id="{chat_id}"'
         )
 
     # jobs
@@ -158,4 +160,4 @@ async def reset_sender(
     log.logger.info(
         f'[BOT] User "{user_id}" updated sender from "{prev_token}" to "{new_token}", chat_id={chat_id}'
     )
-    return False
+    return None

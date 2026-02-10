@@ -204,7 +204,6 @@ async def send_message(
     user_bot_token: str,
     message_thread_id: int,
 ) -> Tuple[str, Optional[str]]:
-
     err = None
 
     if photo_group_id != "":  # media group
@@ -212,30 +211,32 @@ async def send_message(
             http_session, chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif photo_id != "":  # single photo
-        resp = await teleapi.send_single_photo(
+        resp, err = await teleapi.send_single_photo(
             http_session, chat_id, photo_id, content, user_bot_token, message_thread_id
         )
     elif content_type == ContentType.POLL.value:
-        resp = await teleapi.send_poll(
+        resp, err = await teleapi.send_poll(
             http_session, chat_id, content, user_bot_token, message_thread_id
         )
     else:  # text message
-        resp = await teleapi.send_text(
+        resp, err = await teleapi.send_text(
             http_session, chat_id, content, user_bot_token, message_thread_id
         )
 
-    if err is not None:
+    if err is not None or resp is None:
+        if err is None:
+            err = "No response from Telegram API"
         log.logger.warning(
             f'[TELEGRAM API] Failed to send message, job_id="{job_id}", chat_id={chat_id}, err={err}'
         )
         return "", err
 
     log.logger.info(
-        f'[TELEGRAM API] Sent message, job_id="{job_id}", chat_id={chat_id}, response_status={resp.get("status")}'
+        f'[TELEGRAM API] Sent message, job_id="{job_id}", chat_id={chat_id}, response_status={resp.status}'
     )
 
-    json = resp.get("json") or {}
-    status = resp.get("status")
+    json = resp.json
+    status = resp.status
 
     if status != 200:
         err_description = (

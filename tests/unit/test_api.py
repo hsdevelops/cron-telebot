@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 import api
+from teleapi.requests import RequestResponse
 
 
 def test_home():
@@ -76,7 +77,7 @@ async def test_process_job_error_path(monkeypatch):
 @pytest.mark.asyncio
 async def test_send_message_non_200_returns_error(monkeypatch):
     async def fake_send_text(*_):
-        return {"status": 400, "json": {"description": "bad"}}
+        return RequestResponse(status=400, json={"description": "bad"}), None
 
     monkeypatch.setattr(api.teleapi, "send_text", fake_send_text)
 

@@ -5,6 +5,7 @@ from telegram import KeyboardButton, ReplyKeyboardMarkup
 from bot import replies
 from bot.convos.changesender import *
 from tests.unit.conftest import mock_update
+from teleapi.requests import RequestResponse
 
 
 @pytest.fixture
@@ -159,9 +160,10 @@ State 1
 @pytest.mark.asyncio
 @mock.patch("bot.replies.text")
 async def test_update_sender_invalid_bot(send_msg, mocker, simple_context):
-    mock_resp = {"status": 500}
+    mock_resp = RequestResponse(status=500)
     mocker.patch(
-        "bot.convos.changesender.teleapi.get_bot_details", return_value=mock_resp
+        "bot.convos.changesender.teleapi.get_bot_details",
+        return_value=(mock_resp, None),
     )
 
     simple_update = mock_update(text="some_token")
@@ -182,9 +184,12 @@ async def test_update_sender_valid_bot(
     mock_job,
     mock_job2,
 ):
-    mock_resp = {"json": {"result": {"id": 1, "username": "test_bot"}}, "status": 200}
+    mock_resp = RequestResponse(
+        status=200, json={"result": {"id": 1, "username": "test_bot"}}
+    )
     mocker.patch(
-        "bot.convos.changesender.teleapi.get_bot_details", return_value=mock_resp
+        "bot.convos.changesender.teleapi.get_bot_details",
+        return_value=(mock_resp, None),
     )
 
     mock_group["user_bot_token"] = 1

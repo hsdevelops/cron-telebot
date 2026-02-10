@@ -5,6 +5,7 @@ import uvicorn
 from api import app
 from common import log
 
+
 # For bot webhook
 @app.post("/")
 async def process_update(request: Request):

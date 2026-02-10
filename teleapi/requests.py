@@ -1,15 +1,17 @@
-from typing import Any, Dict, Optional, TypedDict
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 import aiohttp
 
 from common import log
 
 
-class RequestResponse(TypedDict, total=False):
-    message_id: Optional[str]
-    status: Optional[int]
-    content: Optional[bytes]
-    error: Optional[str]
-    json: Optional[Any]
+@dataclass
+class RequestResponse:
+    message_id: Optional[str] = None
+    status: Optional[int] = None
+    content: Optional[bytes] = None
+    error: Optional[str] = None
+    json: Dict[str, Any] = field(default_factory=dict)
 
 
 async def request(
@@ -19,7 +21,6 @@ async def request(
     files: Optional[Dict[str, Any]] = None,
     **kwargs,
 ) -> RequestResponse:
-
     if files:
         form = aiohttp.FormData()
         for key, file_obj in files.items():
@@ -30,31 +31,29 @@ async def request(
         async with session.request(method, url, **kwargs) as response:
             content_type = response.headers.get("Content-Type", "")
 
-            json_body = None
+            json_body: Dict[str, Any] = {}
             if "application/json" in content_type:
-                json_body = await response.json()
+                parsed = await response.json()
+                if isinstance(parsed, dict):
+                    json_body = parsed
 
             content = await response.read()
 
-            return {
-                "status": response.status,
-                "json": json_body,
-                "content": content,
-            }
+            return RequestResponse(
+                status=response.status,
+                json=json_body,
+                content=content,
+            )
 
-    except aiohttp.ClientResponseError as e:
-        log.logger.warning(f"[API] status = {e.status}, {type(e).__name__} - {repr(e)}")
-        return {
-            "status": e.status,
-            "error": str(e),
-        }
-
-    except aiohttp.ClientError as e:
+    except Exception as e:
         log.logger.warning(f"[API] {type(e).__name__} - {repr(e)}")
-        return {
-            "status": None,
-            "error": str(e),
-        }
+        status = getattr(e, "status", None)
+        status_prefix = f"status={status} " if status is not None else ""
+        return RequestResponse(
+            status=status,
+            error=f"{status_prefix}{type(e).__name__} - {repr(e)}",
+            json={},
+        )
 
     finally:
         if files:

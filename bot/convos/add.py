@@ -212,7 +212,7 @@ async def add_crontab(
         log.logger.error(
             f'[BOT] Failed to insert new job "{jobname}" for user "{user_id}", chat_id={chat_id}'
         )
-        await replies.text(replies.internal_failure_message)
+        await replies.text(update, replies.internal_failure_message)
         context.chat_data.pop(user_id, None)
         return ConversationHandler.END
 
@@ -224,9 +224,10 @@ async def add_crontab(
     # special case — transfer photo ownership to new sender
     http_session: aiohttp.ClientSession = context.application.bot_data["http_session"]
     photo_ids = payload.get("photo_id", None)
+    failed_photo_ids = []
     if photo_ids is not None and user_bot_token is not None:
         for photo_id in str.split(photo_ids, ";"):
-            resp, new_photo_id = await transfer_photo_between_bots(
+            new_photo_id, err = await transfer_photo_between_bots(
                 http_session,
                 db_service,
                 user_bot_token,
@@ -235,9 +236,18 @@ async def add_crontab(
                 photo_id,
                 result.inserted_id,
             )
-            log.logger.info(
-                f'[BOT] User "{user_id}" transferred photo "{new_photo_id}", chat_id="{chat_id}", status={resp.get("status")}'
-            )
+            if err:
+                failed_photo_ids.append(photo_id)
+            else:
+                log.logger.info(
+                    f'[BOT] User "{user_id}" transferred photo "{new_photo_id}", chat_id="{chat_id}"'
+                )
+
+    if failed_photo_ids:
+        log.logger.warning(
+            f'[BOT] Failed to transfer photos "{",".join(failed_photo_ids)}", chat_id="{chat_id}"'
+        )
+        await replies.text(update, replies.photo_transfer_warning_message)
 
     await replies.text(update, replies.format_add_success_message(payload, description))
     context.chat_data.pop(user_id, None)

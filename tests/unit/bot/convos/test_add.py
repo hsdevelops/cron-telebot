@@ -123,3 +123,34 @@ async def test_add_crontab_success(send_msg, simple_update, simple_context):
         res = await add_crontab(mock_update(text="* * * * *"), simple_context)
     assert res == ConversationHandler.END
     send_msg.assert_called_once()
+
+
+@pytest.mark.asyncio
+@mock.patch("bot.replies.text")
+async def test_add_crontab_photo_transfer_warns(
+    send_msg, simple_update, simple_context
+):
+    user_id = simple_update.message.from_user.id
+    simple_context.chat_data[user_id] = {
+        "user_id": user_id,
+        "jobname": "job",
+        "content": "hi",
+        "content_type": ContentType.PHOTO.value,
+        "utc_tz": "UTC",
+        "tz_offset": 0,
+        "photo_id": "p1;p2",
+        "user_bot_token": "token",
+    }
+    with mock.patch(
+        "bot.convos.add.get_description", return_value="every minute"
+    ), mock.patch("common.utils.calc_next_run", return_value=("u", "d")), mock.patch(
+        "database.dbutils.dbutils.add_new_entry",
+        mock.AsyncMock(return_value=mock.Mock(inserted_id=1)),
+    ), mock.patch(
+        "bot.convos.add.transfer_photo_between_bots",
+        mock.AsyncMock(side_effect=[(None, "boom"), ("newp2", None)]),
+    ):
+        res = await add_crontab(mock_update(text="* * * * *"), simple_context)
+    assert res == ConversationHandler.END
+    # warning + success message
+    assert send_msg.call_count == 2

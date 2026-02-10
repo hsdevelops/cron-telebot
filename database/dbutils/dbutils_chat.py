@@ -71,7 +71,6 @@ async def add_chat_data(
     created_by: int,
     telegram_ts: datetime,
 ) -> InsertOneResult:
-
     new_doc = {
         "chat_id": chat_id,
         "chat_title": chat_title,

@@ -102,6 +102,7 @@ chat_admin_required_message = "Please promote me to admin so I can check permiss
 missing_job_error_message = 'You do not have a job named "%s". You may only /list and /delete jobs that are active.'
 internal_failure_message = "Failed to create/update/remove your cron job... please try to /add or /delete again. If this happens consistently, please contact the bot owner at hs.develops.1@gmail.com."
 start_error_message = "Failed to set up your chat for usage with @cron_telebot. Please try to /start again. If this happens consistently, please contact the bot owner at hs.develops.1@gmail.com."
+photo_transfer_warning_message = "Photo transfer failed. The job was created, but existing photos may not work with the new sender."
 
 
 # keyboards

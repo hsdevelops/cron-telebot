@@ -13,9 +13,13 @@ from teleapi.requests import RequestResponse, request
 
 async def get_bot_details(
     http_session: ClientSession, user_bot_token: str
-) -> RequestResponse:
+) -> Tuple[RequestResponse, Optional[str]]:
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/getMe"
-    return await request(http_session, endpoint)
+    resp = await request(http_session, endpoint)
+    err = resp.error
+    if err:
+        log.logger.warning(f"[TELEGRAM API] get_bot_details failed: {err}")
+    return resp, str(err) if err else None
 
 
 async def send_media_group(
@@ -28,7 +32,7 @@ async def send_media_group(
 ) -> Tuple[RequestResponse, Optional[str]]:
     media, files, err = await prepare_photos(http_session, photo_id, content)
     if err is not None:
-        return RequestResponse(), err
+        return RequestResponse(error=err), err
 
     query = {
         "chat_id": chat_id,
@@ -42,7 +46,10 @@ async def send_media_group(
         f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMediaGroup?{query_string}"
     )
     resp = await request(http_session, endpoint, method="POST", files=files)
-    return resp, None
+    err = resp.error
+    if err:
+        log.logger.warning(f"[TELEGRAM API] send_media_group failed: {err}")
+    return resp, str(err) if err else None
 
 
 async def send_single_photo(
@@ -52,7 +59,7 @@ async def send_single_photo(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> RequestResponse:
+) -> Tuple[RequestResponse, Optional[str]]:
     query = {
         "chat_id": chat_id,
         "photo": photo_id,
@@ -65,7 +72,10 @@ async def send_single_photo(
     query_string = urlencode(query)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendPhoto?{query_string}"
     resp = await request(http_session, endpoint)
-    return resp
+    err = resp.error
+    if err:
+        log.logger.warning(f"[TELEGRAM API] send_single_photo failed: {err}")
+    return resp, str(err) if err else None
 
 
 async def send_single_photo_local(
@@ -95,7 +105,10 @@ async def send_single_photo_local(
     query_string = urlencode({"chat_id": chat_id, "caption": content})
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{new_token}/sendPhoto?{query_string}"
     resp = await request(http_session, endpoint, method="POST", files={"photo": photo})
-    return resp, None
+    err = resp.error
+    if err:
+        log.logger.warning(f"[TELEGRAM API] send_single_photo_local failed: {err}")
+    return resp, str(err) if err else None
 
 
 async def send_poll(
@@ -104,14 +117,16 @@ async def send_poll(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> RequestResponse:
+) -> Tuple[RequestResponse, Optional[str]]:
     try:
         poll_content = json.loads(content)
     except Exception as e:
         log.logger.warning(
             f"[TELEGRAM API] Invalid poll content: {type(e).__name__} - {e}"
         )
-        return {"status": 0, "json": None, "content": None, "error": str(e)}
+        return RequestResponse(status=500, json=None, content=None, error=str(e)), str(
+            e
+        )
 
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendPoll"
     parameters = {
@@ -133,7 +148,10 @@ async def send_poll(
         parameters["reply_to_message_id"] = message_thread_id
 
     resp = await request(http_session, endpoint, data=parameters)
-    return resp
+    err = resp.error
+    if err:
+        log.logger.warning(f"[TELEGRAM API] send_poll failed: {err}")
+    return resp, str(err) if err else None
 
 
 async def send_text(
@@ -142,7 +160,7 @@ async def send_text(
     content: str,
     user_bot_token: str,
     message_thread_id: int,
-) -> RequestResponse:
+) -> Tuple[RequestResponse, Optional[str]]:
     query = {
         "chat_id": chat_id,
         "text": content,
@@ -154,7 +172,10 @@ async def send_text(
     query_string = urlencode(query)
     endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/sendMessage?{query_string}"
     resp = await request(http_session, endpoint)
-    return resp
+    err = resp.error
+    if err:
+        log.logger.warning(f"[TELEGRAM API] send_text failed: {err}")
+    return resp, str(err) if err else None
 
 
 async def delete_message(
@@ -173,11 +194,14 @@ async def delete_message(
         try:
             endpoint = f"{TELEGRAM_API_BASE_URL}/bot{user_bot_token}/deleteMessage?chat_id={chat_id}&message_id={message_id}"
             response = await request(http_session, endpoint)
-            json_resp = response.get("json") or {}
+            err = response.error
+            if err:
+                log.logger.warning(f"[TELEGRAM API] delete_message failed: {err}")
+                continue
             log.logger.info(
-                f'[TELEGRAM API] Deleted previous message, response_status={response.get("status")}, chat_id={chat_id}, message_id={message_id}'
+                f"[TELEGRAM API] Deleted previous message, response_status={response.status}, chat_id={chat_id}, message_id={message_id}"
             )
-            last_ok = json_resp.get("ok")
+            last_ok = response.json.get("ok")
         except Exception as e:
             log.logger.warning(
                 f"[TELEGRAM API] delete_message failed: {type(e).__name__} - {e}"
@@ -217,13 +241,12 @@ async def download_photo(
     )
     try:
         file_details_response = await request(http_session, file_details_endpoint)
-        if file_details_response.get("status") != 200:
-            err = f'Failed to get file details, bot_token = {bot_token}, photo_id = {photo_id}, status = {file_details_response.get("status")}'
+        if file_details_response.status != 200:
+            err = f"Failed to get file details, bot_token = {bot_token}, photo_id = {photo_id}, status = {file_details_response.status}"
             log.logger.warning(f"[TELEGRAM API] {err}")
             return files, err
 
-        json_resp = file_details_response.get("json") or {}
-        result = json_resp.get("result") if isinstance(json_resp, dict) else None
+        result = file_details_response.json.get("result")
         file_path = result.get("file_path") if isinstance(result, dict) else None
         if not file_path:
             err = f"Failed to resolve file_path, bot_token = {bot_token}, photo_id = {photo_id}"
@@ -233,12 +256,12 @@ async def download_photo(
         file_url = f"{TELEGRAM_API_BASE_URL}/file/bot{bot_token}/{file_path}"
         file_response = await request(http_session, file_url)
 
-        if file_response.get("status") != 200:
-            err = f'Failed to get file, bot_token = {bot_token}, photo_id = {photo_id}, status = {file_response.get("status")}'
+        if file_response.status != 200:
+            err = f"Failed to get file, bot_token = {bot_token}, photo_id = {photo_id}, status = {file_response.status}"
             log.logger.warning(f"[TELEGRAM API] {err}")
             return files, err
 
-        content = file_response.get("content")
+        content = file_response.content
         if content is None:
             err = f"Empty file content, bot_token = {bot_token}, photo_id = {photo_id}"
             log.logger.warning(f"[TELEGRAM API] {err}")
@@ -268,7 +291,7 @@ async def transfer_photo_between_bots(
     chat_id: int,
     photo_id: str,
     job_id: str,
-) -> Tuple[RequestResponse, Optional[str]]:
+) -> Tuple[Optional[str], Optional[str]]:
     resp, err = await send_single_photo_local(
         http_session,
         new_token=new_token,
@@ -282,28 +305,24 @@ async def transfer_photo_between_bots(
         log.logger.warning(
             f"[TELEGRAM API] failed to transfer photo between bots, err={err}"
         )
-        return resp, err
+        return None, err
 
-    if resp.get("status") != 200:
+    if resp.status != 200:
+        err = resp.json.get("description")
         log.logger.warning(
-            f'[TELEGRAM API] failed to transfer photo between bots, status={resp.get("status")}'
+            f"[TELEGRAM API] failed to transfer photo between bots, status={resp.status}, err ={err}"
         )
-        return resp, None
+        return None, f"Error {resp.status} {err}"
 
-    json_resp = resp.get("json") or {}
-    new_photo_id = (
-        json_resp.get("result", {}).get("photo", [{}])[-1].get("file_id")
-        if isinstance(json_resp, dict)
-        else None
-    )
+    new_photo_id = resp.json.get("result", {}).get("photo", [{}])[-1].get("file_id")
     if not new_photo_id:
         log.logger.warning("[TELEGRAM API] failed to parse new photo id from response")
-        return resp, None
+        return None, "Failed to parse new photo id from response"
 
     q = {"photo_id": new_photo_id}
     await dbutils.update_entry_by_jobid(db_service, job_id, q)
 
-    message_id = json_resp.get("result", {}).get("message_id")
+    message_id = resp.json.get("result", {}).get("message_id")
     if message_id is not None:
         await delete_message(http_session, chat_id, str(message_id), new_token)
-    return resp, new_photo_id
+    return new_photo_id, None
