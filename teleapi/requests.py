@@ -8,7 +8,7 @@ from common import log
 @dataclass
 class RequestResponse:
     message_id: Optional[str] = None
-    status: Optional[int] = None
+    status: int = 504
     content: Optional[bytes] = None
     error: Optional[str] = None
     json: Dict[str, Any] = field(default_factory=dict)
@@ -47,11 +47,9 @@ async def request(
 
     except Exception as e:
         log.logger.warning(f"[API] {type(e).__name__} - {repr(e)}")
-        status = getattr(e, "status", None)
-        status_prefix = f"status={status} " if status is not None else ""
         return RequestResponse(
-            status=status,
-            error=f"{status_prefix}{type(e).__name__} - {repr(e)}",
+            status=getattr(e, "status", 504) or 504,
+            error=f"{type(e).__name__} - {repr(e)}",
             json={},
         )
 

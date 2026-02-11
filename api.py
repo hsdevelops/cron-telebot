@@ -23,6 +23,7 @@ app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 cpu_usage = Gauge("cpu_usage", "CPU Usage")
 memory_usage = Gauge("memory_usage", "Memory Usage")
+IGNORED_ERRORS = {"Error 504: TimeoutError - TimeoutError()"}
 
 
 @app.get("/")
@@ -179,7 +180,8 @@ async def process_job(
         )
         errors = []
     else:
-        errors = [*errors, {"error": err, "timestamp": now}]
+        if err not in IGNORED_ERRORS:
+            errors = [*errors, {"error": err, "timestamp": now}]
         bot_message_id = previous_message_id
 
     payload = {
@@ -223,11 +225,12 @@ async def send_message(
             http_session, chat_id, content, user_bot_token, message_thread_id
         )
 
-    if err is not None or resp is None:
+    if err is not None or resp.status != 200:
         if err is None:
-            err = "No response from Telegram API"
+            err = resp.json.get("description") or "Unknown error"
+        err = f"Error {resp.status}: {err}"
         log.logger.warning(
-            f'[TELEGRAM API] Failed to send message, job_id="{job_id}", chat_id={chat_id}, err={err}'
+            f'[TELEGRAM API] Failed to send message, job_id="{job_id}", chat_id={chat_id}, status={resp.status}, err={err}'
         )
         return "", err
 
@@ -235,25 +238,15 @@ async def send_message(
         f'[TELEGRAM API] Sent message, job_id="{job_id}", chat_id={chat_id}, response_status={resp.status}'
     )
 
-    json = resp.json
-    status = resp.status
-
-    if status != 200:
-        err_description = (
-            json.get("description") if isinstance(json, dict) else "Unknown error"
-        )
-        err = "Error {}: {}".format(status, err_description)
-        return "", err
-
     if photo_group_id != "":
         msg_ids = [
             str(message.get("message_id"))
-            for message in json.get("result", [])
+            for message in resp.json.get("result", [])
             if isinstance(message, dict) and message.get("message_id") is not None
         ]
         return ";".join(msg_ids), None
 
-    message_id = json.get("result", {}).get("message_id") or ""
+    message_id = resp.json.get("result", {}).get("message_id") or ""
     return message_id, None
 
 

@@ -67,4 +67,5 @@ async def test_request_includes_status_in_error():
     resp = await tele_requests.request(session, "http://example.com")
 
     assert resp.error is not None
-    assert "status=418" in resp.error
+    assert "DummyError" in resp.error
+    assert resp.status == 418
