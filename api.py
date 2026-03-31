@@ -17,6 +17,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from typing import Any, Optional, Tuple
 
 import config
+from bot import replies
 from bot.ptb import lifespan
 
 app = FastAPI(lifespan=lifespan)
@@ -184,15 +185,50 @@ async def process_job(
             errors = [*errors, {"error": err, "timestamp": now}]
         bot_message_id = previous_message_id
 
+    should_remove = len(errors) > config.RETRIES
+    if should_remove:
+        await notify_job_deleted(
+            http_session=http_session,
+            entry=entry,
+            errors=errors,
+            user_bot_token=user_bot_token,
+        )
+
     payload = {
         "pending_ts": None,
         "nextrun_ts": db_nextrun_ts,
         "user_nextrun_ts": user_nextrun_ts,
         "previous_message_id": str(bot_message_id),
-        "removed_ts": now if len(errors) > config.RETRIES else "",
+        "removed_ts": now if should_remove else "",
         "errors": errors,
     }
     await dbutils.update_entry_by_jobname(db_service, entry, payload)
+
+
+async def notify_job_deleted(
+    http_session: aiohttp.ClientSession,
+    entry: Optional[Any],
+    errors: list[Any],
+    user_bot_token: str,
+) -> None:
+    if entry is None:
+        return
+
+    created_by = entry.get("created_by")
+    if created_by in (None, ""):
+        log.logger.warning(
+            f'[TELEGRAM API] Failed to notify deleted job creator, job_id="{entry.get("_id")}", err=missing created_by'
+        )
+        return
+
+    message = replies.format_deleted_job_message(entry, config.RETRIES, errors)
+    _, err = await teleapi.send_text(
+        http_session, created_by, message, user_bot_token, None
+    )
+    if err is not None:
+        log.logger.warning(
+            f'[TELEGRAM API] Failed to notify deleted job creator, job_id="{entry.get("_id")}", user_id={created_by}, err={err}'
+        )
 
 
 async def send_message(

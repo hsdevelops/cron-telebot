@@ -41,6 +41,51 @@ def test_format_exceed_limit_reply_variants():
     assert "increased your limit" in msg_increased
 
 
+def test_format_deleted_job_message_includes_core_job_details():
+    message = replies.format_deleted_job_message(
+        entry={
+            "jobname": "daily-report",
+            "chat_id": 123,
+            "channel_id": "",
+            "crontab": "0 9 * * *",
+            "content": "send status update",
+            "content_type": "text",
+            "photo_id": "",
+            "photo_group_id": "",
+            "message_thread_id": 77,
+            "option_delete_previous": True,
+        },
+        retry_count=1,
+        errors=[{"error": "Error 400: bad request", "timestamp": "now"}],
+    )
+
+    assert "failed more than 1 time(s)" in message
+    assert "daily-report" in message
+    assert "0 9 * * *" in message
+    assert "send status update" in message
+    assert "message_thread_id: 77" in message
+    assert "latest_error: Error 400: bad request" in message
+    assert message.startswith("<pre>")
+    assert message.endswith("</pre>")
+
+
+def test_format_deleted_job_message_escapes_html_content():
+    message = replies.format_deleted_job_message(
+        entry={
+            "jobname": "job",
+            "chat_id": 1,
+            "crontab": "* * * * *",
+            "content": "<b>danger</b>",
+            "content_type": "text",
+        },
+        retry_count=2,
+        errors=[],
+    )
+
+    assert "<b>danger</b>" not in message
+    assert "&lt;b&gt;danger&lt;/b&gt;" in message
+
+
 @pytest.mark.asyncio
 async def test_text_handles_exception(simple_update, monkeypatch):
     async def boom(*_, **__):

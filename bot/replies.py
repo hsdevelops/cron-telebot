@@ -1,3 +1,4 @@
+import html
 import json
 from types import SimpleNamespace
 from telegram.constants import ParseMode
@@ -190,6 +191,38 @@ def format_exceed_limit_reply(limit: int) -> str:
 
     msg = f"As per prior request we have increased your limit to {limit}.\n\n"
     return exceed_limit_error_message.format(custom_message=msg, limit=limit)
+
+
+def format_deleted_job_message(entry: Any, retry_count: int, errors: List[Any]) -> str:
+    content = entry.get("content") or ""
+    content_type = entry.get("content_type") or ""
+    photo_id = entry.get("photo_id") or ""
+    photo_group_id = entry.get("photo_group_id") or ""
+    message_thread_id = entry.get("message_thread_id")
+    channel_id = entry.get("channel_id") or ""
+    lines = [
+        (
+            f"Your cron job failed more than {retry_count} time(s) and has now been "
+            "deleted. Please recreate it if you want it to continue."
+        ),
+        "",
+        "Job details:",
+        f"jobname: {entry.get('jobname') or ''}",
+        f"chat_id: {entry.get('chat_id') or ''}",
+        f"channel_id: {channel_id}",
+        f"crontab: {entry.get('crontab') or ''}",
+        f"content_type: {content_type}",
+        f"message_thread_id: {message_thread_id if message_thread_id is not None else ''}",
+        f"option_delete_previous: {entry.get('option_delete_previous') or ''}",
+        f"photo_id: {photo_id}",
+        f"photo_group_id: {photo_group_id}",
+        "content:",
+        content,
+    ]
+    if errors:
+        latest_error = errors[-1].get("error") if isinstance(errors[-1], dict) else ""
+        lines.extend(["", f"latest_error: {latest_error or ''}"])
+    return "<pre>%s</pre>" % html.escape("\n".join(lines))
 
 
 # send message
