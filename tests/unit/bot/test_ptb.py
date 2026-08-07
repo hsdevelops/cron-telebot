@@ -104,7 +104,7 @@ async def test_lifespan_webhook_path(monkeypatch):
 
     app = FastAPI()
     async with ptb.lifespan(app):
-        assert app.state.ptb.bot.deleted is True
+        assert app.state.ptb.bot.deleted is False
         assert app.state.ptb.bot.webhook_set == "https://example.com"
 
     assert app.state.ptb.shutdown_called is True

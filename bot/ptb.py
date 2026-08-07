@@ -7,6 +7,7 @@ from telegram.ext import Application
 from typing import AsyncGenerator
 from bot.handlers import bot_handlers, handle_error
 
+from common import log
 from database import mongo
 
 
@@ -37,7 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     await ptb.initialize()
 
-    await ptb.bot.deleteWebhook(drop_pending_updates=False)
     ptb.bot_data["mongo"] = db_service
     ptb.bot_data["http_session"] = http_session
 
@@ -49,6 +49,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # polling
     if config.BOTHOST is None:
         try:
+            log.logger.info(
+                "[BOT] No BOTHOST configured, deleting webhook and starting polling"
+            )
+            await ptb.bot.deleteWebhook(drop_pending_updates=False)
             await ptb.start()
             await ptb.updater.start_polling(drop_pending_updates=False)
             yield
@@ -62,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     # webhook
     try:
+        log.logger.info(f"[BOT] Setting webhook, url={config.BOTHOST}")
         await ptb.bot.setWebhook(config.BOTHOST)
         yield
     finally:
