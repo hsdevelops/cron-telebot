@@ -31,7 +31,9 @@ Note: The latest version does not support Google Sheets as a database anymore. P
 
 ## Running in production
 1. Configure environment variables. See [config.py](./config.py) for the required environment variables and how you can get them.
-2. Entrypoint is `gunicorn main:app -k uvicorn.workers.UvicornWorker --timeout 60`. No need to run bot and api separately.
+2. Entrypoint is `gunicorn main:app -w 1 -k uvicorn.workers.UvicornWorker --timeout 60`. No need to run bot and api separately.
+
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=cron-telebot&type=git&repository=hsdevelops%2Fcron-telebot&branch=main&run_command=gunicorn+main%3Aapp+-w+1+-k+uvicorn.workers.UvicornWorker+--timeout+60&instance_type=free&regions=fra&instances_min=0&autoscaling_sleep_idle_delay=3900&env%5BBOTHOST%5D=https%3A%2F%2Frequired-kariotta-hs-develops-fc48c295.koyeb.app&env%5BINFLUXDB_TOKEN%5D=3tI-RiLphNmnWXW71CPxw4gnvdDK98K82S5u-eqa2xzwfhT1ejeO9kcD3J113SmbAvaQfoVW1bwAKnTBViM9jA%3D%3D&env%5BMONGODB_CONNECTION_STRING%5D=mongodb%2Bsrv%3A%2F%2Fadmin%3Ay0valDcc9lj3abWk%40cluster0.owoprdx.mongodb.net%2F%3FretryWrites%3Dtrue%26w%3Dmajority&env%5BTELEGRAM_BOT_TOKEN%5D=5175096759%3AAAG3uu602aVQpZBWMwfHtMNOgNWHD2s9xo0)
 
 ## Contributing
 
